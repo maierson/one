@@ -11,6 +11,7 @@ There are three significant operation types to be aware of:
 * **[time travel](https://maierson.gitbooks.io/one/content/time_travel.html)** - ```undo()``` and ```redo()``` to go back and forth in time
 
 
+
     let item1 = {uid:1}
     let item2 = {uid:2, ref:item1}
     One.put(item2)
@@ -26,7 +27,7 @@ There are three significant operation types to be aware of:
 ```One``` can place entities on separate [threads](https://maierson.gitbooks.io/one/content/threads.html) for a granular control of the time travelling mechanism.
 
 ###Immutable 
-All data is immutable. Once an item enters the cache it freezes and cannot change. This is to enable quick identity checks against immutable entities. 
+All data is immutable. Once an item enters the cache it freezes and cannot change. This is to enable quick identity checks against immutable entities (ie React identity check). 
 
     let item = {uid:1}
     Object.isFrozen(item) // false
