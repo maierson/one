@@ -10,6 +10,8 @@ There are three significant operation types to be aware of:
 * **[queue](https://maierson.gitbooks.io/one/content/queue.html)** - fast input to bypass uniqueness tracking
 * **[time travel](https://maierson.gitbooks.io/one/content/time_travel.html)** - ```undo()``` and ```redo()``` to go back and forth in time
 
+Some code
+
     let item1 = {uid:1}
     let item2 = {uid:2, ref:item1}
     One.put(item2)
