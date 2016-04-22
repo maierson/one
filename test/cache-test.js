@@ -1001,7 +1001,7 @@ describe("One", function () {
             expect(One.pending().queue).to.equal(0);
         });
 
-        it("commits queue without replacing existing on weak commit", function () {
+        it("commits queue without replacing existing on weak commit with array", function () {
             let item1 = {uid: 1};
             One.put(item1);
             let item1a = {uid: 1, text: "test"};
@@ -1015,21 +1015,6 @@ describe("One", function () {
             expect(One.get(2)).to.not.be.undefined;
             expect(One.get(3)).to.not.be.undefined;
             expect(One.pending().queue).to.equal(0);
-        });
-
-        it("commits queue to the correct threads", function () {
-            let item1 = {uid: 1};
-            One.put(item1); // 0
-            let item2 = {uid: 2};
-            One.queue([item1, item2]); // 0
-            let state = One.commit("threadId"); // 1
-
-            let threadData = state.threads.threadId;
-            expect(One.length()).to.equal(2);
-            expect(One.size()).to.equal(2);
-            expect(state.success).to.be.true;
-            expect(threadData.length > 0).to.be.true;
-            expect(One.onThread("threadId")).to.be.true;
         });
 
         // doesn't replace existing items in the cache even if they are different when commit is weak
@@ -1048,6 +1033,76 @@ describe("One", function () {
             expect(count).to.equal(1);
         });
 
+        it("replaces cache items on commit strong", function(){
+            let item = {
+                uid:1,
+                item:{uid:2},
+                items:[{uid:2}],
+                inner:{
+                    uid:3,
+                    item:{uid:2}
+                }
+            };
+            One.put(item);
+
+            let item2 = {
+                uid:4,
+                item:{uid:2, text:"test"}
+            };
+            One.queue(item2);
+            let result = One.get(2);
+            expect(result.text).to.be.undefined;
+            One.commit("main", true);
+            result = One.get(2);
+            expect(result.text).to.equal("test");
+        });
+
+        it("replaces cache items deeply on commit strong", function(){
+            let item = {
+                uid:1,
+                item:{uid:2},
+                items:[{uid:2}],
+                inner:{
+                    uid:3,
+                    item:{uid:2}
+                }
+            };
+            One.put(item);
+
+            let item2 = {
+                uid:4,
+                item:[{
+                    item:{
+                        val:{uid:2, text:"test"}
+                    }
+                }]
+            };
+            One.queue(item2);
+            let result = One.get(2);
+            expect(result.text).to.be.undefined;
+            One.commit("main", true);
+            result = One.get(2);
+            let refFrom = One.refFrom(2);
+            expect(refFrom["4"]).to.not.be.undefined;
+            expect(refFrom["4"]).to.equal("item.item.val"); // ?????
+            //One.print();
+            expect(result.text).to.equal("test");
+        });
+
+        it("commits queue to the correct threads", function () {
+            let item1 = {uid: 1};
+            One.put(item1); // 0
+            let item2 = {uid: 2};
+            One.queue([item1, item2]); // 0
+            let state = One.commit("threadId"); // 1
+
+            let threadData = state.threads.threadId;
+            expect(One.length()).to.equal(2);
+            expect(One.size()).to.equal(2);
+            expect(state.success).to.be.true;
+            expect(threadData.length > 0).to.be.true;
+            expect(One.onThread("threadId")).to.be.true;
+        });
 
         it("puts array of shallow entities without any references", function () {
             let item1 = {uid: 1};
@@ -2238,13 +2293,13 @@ describe("One", function () {
             expect(config.prop.maxHistoryStates).to.equal(1000);
 
             let newConfig = {
-                uidName         : "uuid",
-                useStamp        : true,
+                uidName         : "uniqueId",
                 maxHistoryStates: 20
             };
             One.config(newConfig);
-            expect(config.prop.uidName).to.equal("uuid");
+            print(One.config);
             expect(config.prop.maxHistoryStates).to.equal(20);
+            expect(config.prop.uidName).to.equal("uniqueId");
         });
 
         it("fails to set config if there are items in the cache", function () {
@@ -2253,7 +2308,6 @@ describe("One", function () {
             let config = {
                     uidName: "uuid"
                 }
-                ;
             expect(() => {
                 One.config(config)
             }).to.throw(Error);
@@ -2264,10 +2318,10 @@ describe("One", function () {
             One.put(a);
             One.reset();
             let conf = {
-                uidName: "uuid"
-            }
+                uidName: "uniqueId"
+            };
             One.config(conf);
-            expect(config.prop.uidName).to.equal("uuid");
+            expect(config.prop.uidName).to.equal("uniqueId");
         });
 
         //it("maintains the correct number of configured history states", function () {

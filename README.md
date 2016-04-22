@@ -1,8 +1,7 @@
 # One
 
-```One``` is a browser side application cache. It guarantees entity uniqueness across the entire cache. 
-
-Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache for each unique id.
+Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
+for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.
 
 ###Api
 There are three significant operation types to be aware of:

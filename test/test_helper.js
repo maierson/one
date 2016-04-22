@@ -30,7 +30,7 @@ function contains(array, needle) {
         };
     }
     return indexOf.call(array, needle) > -1;
-};
+}
 
 function print(obj, message) {
     if (message === undefined) {

@@ -91,12 +91,11 @@ export default function createCache(debug = true, libName = "One") {
 /**
  *
  * @param debugParam
- * @returns {{put: (function()), get: (function()), getEdit: (function()), evict: (function()), reset:
- *     (function()), queue: (function()), unQueue: (function()), queueEvict: (function()), getQueued: (function()),
- *     commit: (function()), threadPut: (function()), closeThread: (function()), mergeThread: (function()), cutThread:
- *     (function()), hasThread: hasThread, onThread: (function()), listThreads: (function()), undo: (function()), redo:
- *     (function()), getHistoryState: (function()), getCurrentIndex: (function()), isDirty: (function()), createUid:
- *     (function()), contains: (function()), config: (function()), subscribe: (function())}}
+ * @returns {{put: put, get: get, getEdit: getEdit, evict: evict, reset: reset, queue: queue, unQueue: unqueue,
+ *     queueEvict: queueEvict, getQueued: getQueued, commit: commit, closeThread: closeThread, mergeThread:
+ *     mergeThread, cutThread: cutThread, hasThread: hasThread, onThread: onThread, listThreads: listThreads, undo:
+ *     undo, redo: redo, getHistoryState: getHistoryState, getCurrentIndex: getCurrentIndex, isDirty: isDirty,
+ *     createUid: createUUid, contains: contains, config: setConfig, subscribe: subscribe}}
  */
 function getCache(debugParam = false) {
     "use strict";
@@ -326,26 +325,6 @@ function getCache(debugParam = false) {
     // GET
 
     // THREAD
-    /**
-     * @param entityOrArray
-     * @param {string|string[]} threadId or array of stream ids that the current nodes node should be added
-     *     to
-     */
-    const threadPut = (entityOrArray, threadId) => {
-        // force a thread id
-        if (typeof threadId === "undefined") {
-            throw new TypeError("Cannot put to thread. Missing thread id");
-        }
-
-        let threadIds = getThreadIds(threadId, true);
-
-        // always add to main
-        if (threadIds.indexOf(MAIN_THREAD_ID) < 0) {
-            threadIds.unshift(MAIN_THREAD_ID);
-        }
-
-        return put(entityOrArray, threadIds);
-    };
 
     /**
      *
@@ -385,10 +364,6 @@ function getCache(debugParam = false) {
             createThread(threadId);
         }
     };
-
-    //const getDefaultStreamId = () => {
-    //    return threads.getDefault();
-    //};
 
     /**
      * Closes a slice by removing all intermediary states. Keeps open point and last active node.
@@ -1336,15 +1311,15 @@ function getCache(debugParam = false) {
      * @param evictMap
      * @param refPath the path of the referenced uid entity inside its parent
      */
-    const cacheEntityRefs = (parentEntity, flushMap, parentUid, evictMap, refPath = "") => {
+    const cacheEntityRefs = (parentEntity, flushMap, parentUid, evictMap, refPath = "", strong) => {
         for (let prop in parentEntity) {
             if (parentEntity.hasOwnProperty(prop)) {
                 refPath       = concatProp(refPath, prop);
                 let refEntity = parentEntity[prop];
                 if (isArray(refEntity)) {
-                    cacheArrRefs(refEntity, flushMap, parentUid, evictMap, refPath);
+                    cacheArrRefs(refEntity, flushMap, parentUid, evictMap, refPath, strong);
                 } else if (isObject(refEntity)) {
-                    cacheObjRefs(refEntity, flushMap, parentUid, evictMap, refPath);
+                    cacheObjRefs(refEntity, flushMap, parentUid, evictMap, refPath, strong);
                 }
                 Object.freeze(refEntity);
             }
@@ -1357,6 +1332,7 @@ function getCache(debugParam = false) {
      *
      * @param entity
      * @param threadId
+     * @param strong
      * @returns {boolean}
      */
     const isOnCache = (entity, threadId = MAIN_THREAD_ID, strong = true) => {
@@ -1365,7 +1341,7 @@ function getCache(debugParam = false) {
         }
         let uid          = entity[config.prop.uidName];
         let existingItem = getLiveItem(uid, threadId);
-        if(strong === true){
+        if (strong === true) {
             // entities must be identical
             return existingItem && existingItem[ENTITY] === entity;
         }
@@ -2249,7 +2225,6 @@ function getCache(debugParam = false) {
         commit    : commit,
 
         // threads
-       // threadPut  : threadPut,
         closeThread: closeThread,
         mergeThread: mergeThread,
         cutThread  : cutThread,
@@ -2265,7 +2240,7 @@ function getCache(debugParam = false) {
         // utils
         getCurrentIndex: getCurrentIndex,
         isDirty        : isDirty,
-        createUid      : createUUid,
+        uuid           : createUUid,
         contains       : contains,
         config         : setConfig,
         subscribe      : subscribe
