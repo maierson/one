@@ -286,6 +286,15 @@ function getCache(debugParam = false) {
      * @returns {*} true if the cache has been modified, false otherwise or the object itself if the item has no uid
      */
     const put = (entityOrArray, threadIds = MAIN_THREAD_ID, strong = true) => {
+        // force a thread id
+
+        threadIds = getThreadIds(threadIds, true);
+
+        // always add to main
+        if (threadIds.indexOf(MAIN_THREAD_ID) < 0) {
+            threadIds.unshift(MAIN_THREAD_ID);
+        }
+
         // TODO ****** freeze arrays on put
         // only mergeThread entities with uid
         if ((isArray(entityOrArray) || isObject(entityOrArray))) {
@@ -2240,7 +2249,7 @@ function getCache(debugParam = false) {
         commit    : commit,
 
         // threads
-        threadPut  : threadPut,
+       // threadPut  : threadPut,
         closeThread: closeThread,
         mergeThread: mergeThread,
         cutThread  : cutThread,

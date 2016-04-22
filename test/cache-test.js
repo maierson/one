@@ -984,7 +984,7 @@ describe("One", function () {
             let item = {uid: 1};
             One.put(item);
             let itemUpdate = {uid: 1, value: "val"};
-            One.put(item, false);
+            One.put(item, "main", false);
             let result = One.get(1);
             expect(result.val).to.be.undefined;
         });
@@ -1815,7 +1815,7 @@ describe("One", function () {
 
             One.put({uid: 2}); // current 1
 
-            One.threadPut({uid: 4}, "threadId"); // current2, thread 0
+            One.put({uid: 4}, "threadId"); // current2, thread 0
             One.put({uid: 3}); // current 3, thread 0
             One.undo("threadId"); // current 3, thread 0
             expect(One.get(3)).to.not.be.undefined;
@@ -1825,7 +1825,7 @@ describe("One", function () {
 
         it("reads thread absent after closing thread", function () {
             let item1 = {uid: 1};
-            One.threadPut(item1, "threadId");
+            One.put(item1, "threadId");
             let state = One.cutThread("threadId");
             expect(state.success).to.be.true;
             expect(state.threads.main.hasPrev).to.be.false;
@@ -1836,17 +1836,17 @@ describe("One", function () {
 
         it("removes intermediary states when closing thread", function () {
             One.put({uid: 1}); //0
-            One.threadPut({uid: 2}, "thread1"); // 1
-            One.threadPut({uid: 3}, "thread1"); // 2
-            One.threadPut({uid: 4}, "thread1"); // 3
+            One.put({uid: 2}, "thread1"); // 1
+            One.put({uid: 3}, "thread1"); // 2
+            One.put({uid: 4}, "thread1"); // 3
             One.put({uid: 5}); // 4
             One.put({uid: 6}); //5 
-            One.threadPut({uid: 7}, "thread1"); // 6
-            One.threadPut({uid: 8}, "thread1"); // 7
+            One.put({uid: 7}, "thread1"); // 6
+            One.put({uid: 8}, "thread1"); // 7
             One.put({uid: 9}); // 8
-            One.threadPut({uid: 10}, "thread1"); //9
+            One.put({uid: 10}, "thread1"); //9
             One.put({uid: 11}); // 10
-            One.threadPut({uid: 12}, "thread1"); // 11
+            One.put({uid: 12}, "thread1"); // 11
             One.put({uid: 14}); // 12
 
             expect(One.length()).to.equal(13);
@@ -1881,8 +1881,8 @@ describe("One", function () {
             let item1 = {uid: 1};
             One.put(item1);
 
-            One.threadPut({uid: 2}, "thread1");
-            One.threadPut({uid: 3}, ["thread1", "thread2"]);
+            One.put({uid: 2}, "thread1");
+            One.put({uid: 3}, ["thread1", "thread2"]);
 
             expect(One.length()).to.equal(3);
             expect(One.onThread("thread1")).to.be.true;
@@ -1898,14 +1898,14 @@ describe("One", function () {
 
         it("removes states after current when reverting and putting new entity", function () {
             const thId = "thId"; // threadId
-            One.threadPut({uid: 2}, thId); // 0
-            One.threadPut({uid: 3}, thId); // 1
+            One.put({uid: 2}, thId); // 0
+            One.put({uid: 3}, thId); // 1
             One.put({uid: 4}, thId); // 2
-            One.threadPut({uid: 5}, thId); // 3
+            One.put({uid: 5}, thId); // 3
             let state = One.undo(thId); // threadId == 1
 
             expect(One.get(5, thId)).to.be.undefined;
-            state = One.threadPut({uid: 6}, thId);
+            state = One.put({uid: 6}, thId);
             expect(state.success).to.be.true;
 
             // put to thread advances index
@@ -1918,13 +1918,13 @@ describe("One", function () {
         it("keeps states that are on another thread when reverting and putting new entity", function () {
             const thId = "thId"; // threadId
             const th2 = "th2";
-            One.threadPut({uid: 2}, thId); // 0
-            One.threadPut({uid: 3}, thId); // 1
+            One.put({uid: 2}, thId); // 0
+            One.put({uid: 3}, thId); // 1
             One.put({uid: 4}, thId); // 2
-            One.threadPut({uid: 5}, [thId, th2]); // 3
+            One.put({uid: 5}, [thId, th2]); // 3
             let state = One.undo(thId); // threadId == 1
             expect(One.get(5, thId)).to.be.undefined;
-            state = One.threadPut({uid: 6}, thId);
+            state = One.put({uid: 6}, thId);
             expect(state.success).to.be.true;
             expect(state.threads.thId.currentIndex).to.equal(3);
             // the intermediary state is still removed from this thread
@@ -1935,15 +1935,9 @@ describe("One", function () {
             expect(state.threads.th2.hasNext).to.be.false;
         });
 
-        it("throws if missing threadId on threadPut", function () {
-            expect(() => {
-                One.threadPut({uid: 1})
-            }).to.throw(Error);
-        });
-
         it("throws on wrong type of thread id", function () {
             expect(() => {
-                One.threadPut({uid: 1}, {})
+                One.put({uid: 1}, {})
             }).to.throw(Error);
         });
 
@@ -1955,9 +1949,9 @@ describe("One", function () {
 
         it("keeps all intermediary states on mergeThread", function () {
             let threadId = "thread1";
-            One.threadPut({uid: 1}, threadId);
-            One.threadPut({uid: 2}, threadId);
-            One.threadPut({uid: 3}, threadId);
+            One.put({uid: 1}, threadId);
+            One.put({uid: 2}, threadId);
+            One.put({uid: 3}, threadId);
             let result = One.mergeThread(threadId);
             expect(One.length()).to.equal(3);
             expect(One.get(1, threadId)).to.be.undefined;
@@ -1970,9 +1964,9 @@ describe("One", function () {
         it("puts cache nodes on target thread if supplied on mergeThread", function () {
             let threadId       = "thread1";
             let targetThreadId = "thread2";
-            One.threadPut({uid: 1}, threadId);
-            One.threadPut({uid: 2}, threadId);
-            One.threadPut({uid: 3}, threadId);
+            One.put({uid: 1}, threadId);
+            One.put({uid: 2}, threadId);
+            One.put({uid: 3}, threadId);
             let result = One.mergeThread(threadId, targetThreadId);
             expect(result.threads.thread2).to.not.be.undefined;
             expect(result.threads.thread2.length).to.equal(3);
@@ -1986,9 +1980,9 @@ describe("One", function () {
         it("puts cache nodes on target thread if supplied on closeThread", function () {
             let threadId       = "thread1";
             let targetThreadId = "thread2";
-            One.threadPut({uid: 1}, threadId);
-            One.threadPut({uid: 2}, threadId);
-            One.threadPut({uid: 3}, threadId);
+            One.put({uid: 1}, threadId);
+            One.put({uid: 2}, threadId);
+            One.put({uid: 3}, threadId);
             let result = One.closeThread(threadId, targetThreadId);
             expect(result.threads.thread2).to.not.be.undefined;
             expect(result.threads.thread2.length).to.equal(2);
@@ -2029,9 +2023,9 @@ describe("One", function () {
             One.put({uid: 1, text: "test0"}); // current 1
             let threadId = "threadId";
 
-            One.threadPut({uid: 1, text: "test1"}, threadId); // current 2
+            One.put({uid: 1, text: "test1"}, threadId); // current 2
             One.put({uid: 2}); // current 3
-            One.threadPut({uid: 1, text: "test2"}, threadId); // current 4
+            One.put({uid: 1, text: "test2"}, threadId); // current 4
 
             // undo to next thread node: undo(true)
             let result = One.undo(threadId); // current 2
@@ -2078,11 +2072,11 @@ describe("One", function () {
             // keep thread intermediary nodes - all between start node and current last node
             One.put({uid: 1}); // current 0
             let threadId = "threadId"; // current 0
-            One.threadPut({uid: 1, text: "1"}, threadId); // current 1
+            One.put({uid: 1, text: "1"}, threadId); // current 1
             One.put({uid: 2}); // current 2
-            One.threadPut({uid: 1, text: "3"}, threadId); // current 3
+            One.put({uid: 1, text: "3"}, threadId); // current 3
             One.put({uid: 3}); // current 4
-            One.threadPut({uid: 1, text: "5"}, threadId); // current 5
+            One.put({uid: 1, text: "5"}, threadId); // current 5
             One.undo(threadId); // current 3 / total 5
             let state = One.mergeThread(threadId); // current 4
             expect(One.getCurrentIndex()).to.equal(4);
@@ -2099,11 +2093,11 @@ describe("One", function () {
             // some undo was performed but not to revert thread completely
             One.put({uid: 1}); // current 0
             let threadId = "threadId"; // current 0
-            One.threadPut({uid: 1, text: "1"}, threadId); // current 1
+            One.put({uid: 1, text: "1"}, threadId); // current 1
             One.put({uid: 2}); // current 2
-            One.threadPut({uid: 1, text: "3"}, threadId); // current 3
+            One.put({uid: 1, text: "3"}, threadId); // current 3
             One.put({uid: 3}); // current 4
-            One.threadPut({uid: 1, text: "5"}, threadId); // current 5
+            One.put({uid: 1, text: "5"}, threadId); // current 5
             let state = One.undo(threadId); // current 3 / total 5
 
             // thread went one step back + commits clean
@@ -2124,7 +2118,7 @@ describe("One", function () {
 
         it("cancels thread on cutThread", function () {
             One.put({uid: 1});
-            One.threadPut({uid: 2}, "threadId");
+            One.put({uid: 2}, "threadId");
 
             let state = One.cutThread("threadId");
             expect(state.success).to.be.true;
@@ -2139,8 +2133,8 @@ describe("One", function () {
 
         it("keeps other threads on cutThread", function () {
             One.put({uid: 1});
-            One.threadPut({uid: 2}, "th1");
-            One.threadPut({uid: 3}, ["th1", "th2"]);
+            One.put({uid: 2}, "th1");
+            One.put({uid: 3}, ["th1", "th2"]);
             let state = One.cutThread("th1");
             expect(state.success).to.be.true;
             expect(state.threads.th1).to.be.undefined;
@@ -2155,11 +2149,11 @@ describe("One", function () {
             // some undo was performed but not to revert thread completely
             One.put({uid: 1}); // current 0
             let threadId = "threadId"; // current 0
-            One.threadPut({uid: 1, text: "1"}, threadId); // current 1
+            One.put({uid: 1, text: "1"}, threadId); // current 1
             One.put({uid: 2}); // current 2 / 1 after closeGap
-            One.threadPut({uid: 1, text: "3"}, threadId); // current 3
+            One.put({uid: 1, text: "3"}, threadId); // current 3
             One.put({uid: 3}); // current 4 / 2 after closeGap
-            One.threadPut({uid: 1, text: "5"}, threadId); // current 5
+            One.put({uid: 1, text: "5"}, threadId); // current 5
             One.undo(threadId); // current 3 / total 5
             let state = One.cutThread(); // no op - missing threadId
             expect(state.success).to.be.false;
@@ -2182,7 +2176,7 @@ describe("One", function () {
         //    };
         //    let editable      = One.getEdit(2);
         //    editable.transfer = tr2;
-        //    let historyState  = One.threadPut(editable, "thread1", false);
+        //    let historyState  = One.put(editable, "thread1", false);
         //    expect(One.size()).to.equal(2);
         //});
 
@@ -2200,7 +2194,7 @@ describe("One", function () {
             };
             let editable      = One.getEdit(2);
             editable.transfer = tr2;
-            let historyState  = One.threadPut(editable, "thread1");
+            let historyState  = One.put(editable, "thread1");
             expect(One.size()).to.equal(5);
         })
     });
