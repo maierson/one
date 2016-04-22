@@ -10,15 +10,24 @@
     "build:js:min": "webpack --config webpack.config.production.js",
     "build:lib": "babel src --out-dir lib",
     "build": "npm run build:lib && npm run build:js && npm run build:js:min",
+    "tt": "webpack --config webpack.tt.config.js",
     "prepub": "npm run clean && npm run build"
   },
   "keywords": [
     "cache",
     "uid",
-    "immutable"
+    "immutable",
+    "react",
+    "unique",
+    "id",
+    "time travel"
   ],
   "author": "Dan Maier",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maierson/one.git"
+  },
   "dependencies": {
     "object-path": "^0.9.2"
   },

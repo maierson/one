@@ -34,7 +34,6 @@ describe("One", function () {
 
     afterEach(function () {
         One.reset();
-        //cuid.cutThread();
     });
 
     describe("clone", function () {
@@ -948,13 +947,19 @@ describe("One", function () {
     });
 
     describe("queue", function () {
-        it("gets from queue if existing both in queue and cache", function () {
+        it("gets from cache if existing both in queue and cache", function () {
             let item = {uid: 1};
             One.put(item);
+
             let item1 = {uid: 1, text: "text"};
             One.queue(item1, true);
+
             let result = One.get(1);
-            expect(result.text).to.equal("text");
+            expect(result.text).to.be.undefined;
+
+            let queued = One.getQueued(1);
+            expect(queued).to.not.be.undefined;
+            expect(queued.text).to.equal("text");
         });
 
         it("puts shallow entities without any references", function () {
@@ -1027,6 +1032,23 @@ describe("One", function () {
             expect(One.onThread("threadId")).to.be.true;
         });
 
+        // doesn't replace existing items in the cache even if they are different when commit is weak
+        it("commits weak correctly", function(){
+            let item1 = {uid:1};
+            let item2 = {
+                uid:2,
+                item:item1
+            };
+            One.put(item2);
+            let newItem1 = {uid:1, text:"test"};
+            let count = One.queue(newItem1);
+            expect(count).to.equal(0);
+
+            count = One.queue(newItem1, true);
+            expect(count).to.equal(1);
+        });
+
+
         it("puts array of shallow entities without any references", function () {
             let item1 = {uid: 1};
             let item2 = {uid: 2};
@@ -1064,7 +1086,7 @@ describe("One", function () {
 
             // verify that the pool was cleared
             One.reset();
-            //cuid.commit();
+            //One.commit();
             expect(One.size()).to.equal(0);
             expect(One.length()).to.equal(0);
         });
@@ -1083,8 +1105,8 @@ describe("One", function () {
             One.put(item);
             let item2 = {uid: 1, text: "text"};
             // weak queuing
-            One.queue(item2, true);
-            expect(One.get(1).text).to.equal("text");
+            One.queue(item2);
+            expect(One.get(1).text).to.be.undefined;
         });
 
         it("replaces the queue even if it exists on strong put", function () {
@@ -1801,12 +1823,6 @@ describe("One", function () {
             expect(One.get(3, "threadId")).to.be.undefined;
         });
 
-        //it("reads thread presence after opening thread", function () {
-        //    ;
-        //    // in thread includes the first thread node
-        //    expect(cuid.onThread()).to.be.true;
-        //});
-
         it("reads thread absent after closing thread", function () {
             let item1 = {uid: 1};
             One.threadPut(item1, "threadId");
@@ -1866,8 +1882,6 @@ describe("One", function () {
             One.put(item1);
 
             One.threadPut({uid: 2}, "thread1");
-
-            //let thread2 = cuid.thread("thread2"); // puts this index on thread2 as well
             One.threadPut({uid: 3}, ["thread1", "thread2"]);
 
             expect(One.length()).to.equal(3);

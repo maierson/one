@@ -92,7 +92,7 @@ export default function createCache(debug = true, libName = "One") {
  *
  * @param debugParam
  * @returns {{put: (function()), get: (function()), getEdit: (function()), evict: (function()), reset:
- *     (function()), queue: (function()), unQueue: (function()), queueEvict: (function()), isQueued: (function()),
+ *     (function()), queue: (function()), unQueue: (function()), queueEvict: (function()), getQueued: (function()),
  *     commit: (function()), threadPut: (function()), closeThread: (function()), mergeThread: (function()), cutThread:
  *     (function()), hasThread: hasThread, onThread: (function()), listThreads: (function()), undo: (function()), redo:
  *     (function()), getHistoryState: (function()), getCurrentIndex: (function()), isDirty: (function()), createUid:
@@ -285,7 +285,7 @@ function getCache(debugParam = false) {
      * @param {string|string[]} threadIds id or array of ids for all the threads this items should be added to
      * @returns {*} true if the cache has been modified, false otherwise or the object itself if the item has no uid
      */
-    const put = (entityOrArray, threadIds = MAIN_THREAD_ID) => {
+    const put = (entityOrArray, threadIds = MAIN_THREAD_ID, strong = true) => {
         // TODO ****** freeze arrays on put
         // only mergeThread entities with uid
         if ((isArray(entityOrArray) || isObject(entityOrArray))) {
@@ -627,7 +627,7 @@ function getCache(debugParam = false) {
                 if (strong || !existing) {
                     // only replace on strong or if it doesn't exist on cache
                     if (strong || !get(uid)) {
-                        if (!isQueued(uid)) {
+                        if (!getQueued(uid)) {
                             putQueue.length += 1;
                         }
                         putQueue[uid] = entity;
@@ -641,7 +641,7 @@ function getCache(debugParam = false) {
         if (added) {
             notify(modified);
         }
-        return added;
+        return modified.length;
     };
 
     /**
@@ -650,6 +650,7 @@ function getCache(debugParam = false) {
      * @param {String|Object} uidOrEntity uid or entity to be removed from the queue.
      */
     const unqueue = uidOrEntity => {
+        // TODO make this for list of entities or uids
         let realUid = getActualUid(uidOrEntity);
         if (!realUid) {
             return;
@@ -661,14 +662,17 @@ function getCache(debugParam = false) {
             if (putQueue.length > 0) {
                 putQueue.length -= 1;
             }
+            return true;
         }
+        return false;
     };
 
     /**
      * Commits any pending items that might be pending (ie putQueue)
      * @param {string|number|Array<string>} threadIds optional stream ids to commit to
+     * @param {boolean} strong set to true to replace existing items in the cache, false to maintain existing items
      */
-    const commit = (threadIds) => {
+    const commit = (threadIds, strong = false) => {
         if (putQueue.length > 0) {
             let arr = [];
             for (let prop in putQueue) {
@@ -676,7 +680,7 @@ function getCache(debugParam = false) {
                     arr.push(putQueue[prop]);
                 }
             }
-            let state = put(arr, threadIds);
+            let state = put(arr, threadIds, strong);
             if (state.success === true) {
                 putQueue = getNewLengthObj();
             }
@@ -697,12 +701,12 @@ function getCache(debugParam = false) {
         evictQueue[uidEntity[config.prop.uidName]] = uidEntity;
     };
 
-    const isQueued = uidOrEntity => {
+    const getQueued = uidOrEntity => {
         let realUid = getActualUid(uidOrEntity);
         if (!realUid) {
-            return false;
+            return;
         }
-        return putQueue[realUid] !== undefined;
+        return putQueue[realUid];
     };
 
     const hasPutQueue = () => {
@@ -922,15 +926,16 @@ function getCache(debugParam = false) {
      * @param flushMap
      * @param parentUid
      * @param evictMap
+     * @param strong
      */
-    const buildFlushMap = (entity, flushMap, parentUid, evictMap) => {
+    const buildFlushMap = (entity, flushMap, parentUid, evictMap, strong) => {
         if (hasUid(entity)) {
-            buildFlushMap_uid(entity, flushMap, parentUid, evictMap);
+            buildFlushMap_uid(entity, flushMap, parentUid, evictMap, strong);
         } else {
             if (isArray(entity)) {
-                cacheArrRefs(entity, flushMap, parentUid, evictMap);
+                cacheArrRefs(entity, flushMap, parentUid, evictMap, strong);
             } else {
-                cacheEntityRefs(entity, flushMap, parentUid, evictMap);
+                cacheEntityRefs(entity, flushMap, parentUid, evictMap, strong);
             }
             Object.freeze(entity);
         }
@@ -944,7 +949,7 @@ function getCache(debugParam = false) {
      * @param parentUid uid of the entity's parent (the entity containing a reference to this entity)
      * @param evictMap
      */
-    const buildFlushMap_uid = (entity, flushMap, parentUid, evictMap) => {
+    const buildFlushMap_uid = (entity, flushMap, parentUid, evictMap, strong) => {
         let entityUid = String(entity[config.prop.uidName]);
 
         if (isOnCache(entity) === true) {
@@ -1345,13 +1350,18 @@ function getCache(debugParam = false) {
      * @param threadId
      * @returns {boolean}
      */
-    const isOnCache = (entity, threadId = MAIN_THREAD_ID) => {
+    const isOnCache = (entity, threadId = MAIN_THREAD_ID, strong = true) => {
         if (!hasUid(entity)) {
             return false;
         }
         let uid          = entity[config.prop.uidName];
         let existingItem = getLiveItem(uid, threadId);
-        return existingItem && existingItem[ENTITY] === entity;
+        if(strong === true){
+            // entities must be identical
+            return existingItem && existingItem[ENTITY] === entity;
+        }
+        // otherwise just return if it exists
+        return existingItem ? true : false;
     };
 
     /**
@@ -1559,14 +1569,13 @@ function getCache(debugParam = false) {
             return;
         }
 
-        // if we have it in the putQueue map return that one.
-        let queued = putQueue[realUid];
-        if (queued) {
-            return queued;
-        }
-
         let item = getLiveItem(realUid, threadId);
         if (item === undefined) {
+            // if we have it in the putQueue map return that one.
+            let queued = putQueue[realUid];
+            if (queued) {
+                return queued;
+            }
             return;
         }
         return item[ENTITY];
@@ -1634,7 +1643,7 @@ function getCache(debugParam = false) {
         if (!realUid) {
             return;
         }
-        if (isQueued(uidOrEntity)) {
+        if (getQueued(uidOrEntity)) {
             return putQueue[realUid];
         }
 
@@ -2227,7 +2236,7 @@ function getCache(debugParam = false) {
         queue     : queue,
         unQueue   : unqueue,
         queueEvict: queueEvict,
-        isQueued  : isQueued,
+        getQueued : getQueued,
         commit    : commit,
 
         // threads
