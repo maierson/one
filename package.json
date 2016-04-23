@@ -5,7 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "clean": "rimraf lib dist coverage",
-    "test": "mocha --opts ./test/mocha.opts --compilers js:babel-core/register --recursive test/ **/*.js",
+    "test": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
     "build:js": "webpack --config webpack.config.js",
     "build:js:min": "webpack --config webpack.config.production.js",
     "build:lib": "babel src --out-dir lib",
@@ -38,6 +38,7 @@
     "babel-runtime": "^6.3.13",
     "chai": "^3.4.1",
     "coveralls": "^2.11.9",
+    "istanbul": "^0.4.3",
     "mocha": "^2.3.4",
     "mocha-babel": "^3.0.0",
     "mocha-lcov-reporter": "^1.2.0",

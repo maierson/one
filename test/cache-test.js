@@ -2298,7 +2298,6 @@ describe("One", function () {
                 maxHistoryStates: 20
             };
             One.config(newConfig);
-            print(One.config);
             expect(config.prop.maxHistoryStates).to.equal(20);
             expect(config.prop.uidName).to.equal("uniqueId");
         });
