@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>One by maierson</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">One</h1>
+      <h2 class="project-tagline">Browser side caching utility. It guarantees entity uniqueness in the cache.</h2>
+      <a href="https://github.com/maierson/one" class="btn">View on GitHub</a>
+      <a href="https://github.com/maierson/one/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/maierson/one/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="one" class="anchor" href="#one" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>One</h1>
+
+<p>Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
+for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.</p>
+
+<h3>
+<a id="api" class="anchor" href="#api" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Api</h3>
+
+<p>There are three significant operation types to be aware of:</p>
+
+<ul>
+<li>
+<strong><a href="https://maierson.gitbooks.io/one/content/put.html">put</a> / <a href="https://maierson.gitbooks.io/one/content/get.html">get</a> / <a href="https://maierson.gitbooks.io/one/content/evict.html">evict</a></strong> - items go into the cache with a <code>put</code> operation and come out with a <code>get</code> call. Use <code>evict</code> to force items out of the cache.</li>
+<li>
+<strong><a href="https://maierson.gitbooks.io/one/content/queue.html">queue</a></strong> - fast input to bypass uniqueness tracking</li>
+<li>
+<strong><a href="https://maierson.gitbooks.io/one/content/time_travel.html">time travel</a></strong> - <code>undo()</code> and <code>redo()</code> to go back and forth in time</li>
+</ul>
+
+<p>Some code</p>
+
+<pre><code>let item1 = {uid:1}
+let item2 = {uid:2, ref:item1}
+One.put(item2)
+
+// puts all items with uid separately in the cache
+
+One.get(item1) === undefined // false (item1 is added from item2)
+item1 === One.get(item1) // true (same object)
+item2.ref === One.get(1) // true
+</code></pre>
+
+<h3>
+<a id="threading" class="anchor" href="#threading" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Threading</h3>
+
+<p><code>One</code> can place entities on separate <a href="https://maierson.gitbooks.io/one/content/threads.html">threads</a> for a granular control of the time travelling mechanism.</p>
+
+<h3>
+<a id="immutable" class="anchor" href="#immutable" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Immutable</h3>
+
+<p>All data is immutable. Once an item enters the cache it freezes and cannot change. This is to enable quick identity checks against immutable entities (ie React identity check). </p>
+
+<pre><code>let item = {uid:1}
+Object.isFrozen(item) // false
+
+One.put(item);
+Object.isFrozen(item) // true
+
+let result = One.get(item)
+result === item // true
+</code></pre>
+
+<p>If you later want to edit a reference of the object you can get an editable copy from the cache. This gives you a separate clone of the object that is now editable:</p>
+
+<pre><code>let item = {uid:1}
+One.put(item)
+
+let editable = One.getEdit(1) // or cuid.getEditable(item1);
+Object.isFrozen(editable) // false
+item === editable // false
+
+editable.text = "test"
+One.put(editable)
+
+let edited = One.get(1)
+edited.text = "text" // true
+Object.isFrozen(edited) // true
+</code></pre>
+
+<p>Editing an item changes all its instances in the cache:</p>
+
+<pre><code>let item = {uid:1}
+let item2 = {uid:1, child:item}
+One.put(item2)
+One.get(1) === item // true
+One.get(2) === item2 // true
+
+// Let's do some editing
+let editable = One.getEdit(1);
+editable.text = "test"
+One.put(editable) // also updates item2 reference to item
+
+let result = One.get(2)
+console.log(JSON.stringify(result.item)) // {uid:1, text:"test"}
+</code></pre>
+
+<h3>
+<a id="motivation" class="anchor" href="#motivation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Motivation</h3>
+
+<p>More an more applications are giving users the ability to edit data in the browser. 
+With a normalized data model various instances of an entity can exist at the same time in different locations. This depends on how data is received from the server and added to the local model / store. </p>
+
+<p>This is inconvenient because: </p>
+
+<ul>
+<li>Keeping all the instances in sync can be a daunting task. </li>
+<li>It can make debugging hard. </li>
+<li>It requires tracking each instance and makes reasoning about data complicated. </li>
+<li>It can make the application structure needlessly complex.</li>
+</ul>
+
+<p><a href="https://github.com/reactjs/redux">Redux</a> brings a great breakthrough by putting the entire application state in one place and mutating it only via dispatched actions. But it doesn't enforce entity uniqueness. <code>One</code> aims to take the concept a step further by making each entity unique and immutable in a single store (cache).</p>
+
+<h3>
+<a id="performance-considerations" class="anchor" href="#performance-considerations" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Performance considerations</h3>
+
+<p>Yes there is a performance cost in analyzing each entity deeply to track its dependencies. <code>One</code> offers a couple of ways to mitigate this: <strong>Read optimization</strong> and <strong>Queuing</strong>. </p>
+
+<ul>
+<li>
+<strong>Read optimized</strong>: the penalty is incurred on write operations only. These happen a lot less frequently than read ops. Read ops are super fast (a simple key lookup).</li>
+<li>
+<strong>Queuing</strong> allows the developer to choose when to perform the write operation. <code>One</code> defers the write analysis when writing to the queue. The queue can commit between render operations. This way the UI remains fluid.<br>
+If you were to track all instances of an entity on each update the write penalty could end up being comparably high. This is besides the added complexity introduced by such tracking management.</li>
+</ul>
+
+<h3>
+<a id="data-shape" class="anchor" href="#data-shape" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Data shape</h3>
+
+<p>This is not currently designed to work with cyclical data. It is best for non-cyclical objects received from the server in the form of json (or other non-cyclical fomats).<br>
+If a strong need arises for managing cyclical structures this might be an option for future development.</p>
+
+<h3>
+<a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Documentation</h3>
+
+<ul>
+<li><a href="https://maierson.gitbooks.io/one/content/immutable_data.html">Immutable data</a></li>
+<li>Api
+
+<ul>
+<li><a href="https://maierson.gitbooks.io/one/content/put.html">Put</a></li>
+<li><a href="https://maierson.gitbooks.io/one/content/get.html">Get</a></li>
+<li><a href="https://maierson.gitbooks.io/one/content/evict.html">Evict</a></li>
+</ul>
+</li>
+<li><a href="https://maierson.gitbooks.io/one/content/threads.html">Threads</a></li>
+<li><a href="https://maierson.gitbooks.io/one/content/time_travel.html">Time travel</a></li>
+</ul>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/maierson/one">One</a> is maintained by <a href="https://github.com/maierson">maierson</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
