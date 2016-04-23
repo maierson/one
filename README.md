@@ -1,6 +1,6 @@
 # One
 
-[![Build Status](https://travis-ci.org/maierson/one.svg)](https://travis-ci.org/maierson/one)
+[![Npm Status](https://badge.fury.io/js/one.svg)](https://npmjs.com/package/one) [![Build Status](https://travis-ci.org/maierson/one.svg)](https://travis-ci.org/maierson/one) 
 
 
 Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
