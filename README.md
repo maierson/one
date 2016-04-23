@@ -2,6 +2,7 @@
 
 [![Npm Status](https://badge.fury.io/js/one.svg)](https://npmjs.com/package/one) [![Build Status](https://travis-ci.org/maierson/one.svg)](https://travis-ci.org/maierson/one) 
 
+Browser application cache. It guarantees entity uniqueness across the entire cache.
 
 Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
 for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.
