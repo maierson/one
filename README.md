@@ -1,6 +1,7 @@
 # One
 
-[![Build Status][travis-image]][travis-url]
+[![Build Status](https://travis-ci.org/maierson/one.svg)](https://travis-ci.org/maierson/one)
+
 
 Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
 for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.
