@@ -29,63 +29,107 @@ There are three significant operation types to be aware of:
 
 Some code
 
-    let item1 = {uid:1}
-    let item2 = {uid:2, ref:item1}
-    One.put(item2)
-    
-    // puts all items with uid separately in the cache
-    
-    One.get(item1) === undefined // false (item1 is added from item2)
-    item1 === One.get(item1) // true (same object)
-    item2.ref === One.get(1) // true
+```js
+let item1 = {uid:1}
+let item2 = {uid:2, ref:item1}
+One.put(item2)
 
+// puts all items with uid separately in the cache
+
+One.get(item1) === undefined // false (item1 is added from item2)
+item1 === One.get(item1) // true (same object)
+item2.ref === One.get(1) // true
+```
 
 ###Threading
 ```One``` can place entities on separate [threads](https://maierson.gitbooks.io/one/content/threads.html) for a granular control of the time travelling mechanism.
 
+```js
+let item1 = {uid:1}
+One.put(item1, "thread1") // item1 is on 2 threads "main" and "thread1"
+
+let editable = One.get(1)
+editable.text = "background"
+One.put(editable) // editable is on "main" thread only
+
+let otherEditable = One.get(1)
+otherEditable.text = "thread1Edited"
+One.put(otherEditable, "thread1") // otherEditable is on "main" and "thread1"
+
+// time travel can now be done on either "main" thread or "thread1"
+// on thread1
+One.get(1).text // "thread1Edited"
+// also 
+One.get(1, "thread1").text // "thread1Edited" both threads are left on their last put operation
+
+// travel back on thread1 = to the first put operation
+One.undo("thread1")
+One.get(1, "thread1").text // undefined (jumped straight to the first node)
+
+// but
+One.get(1).text // still "thread1Edited" as the main thread is still positioned at the last node where we left it
+
+// now travel on main thread. "main" thread is left 
+// where it was after the last put operation 
+// (threads can travel separately)
+One.undo()
+One.get(1).text // "background"
+
+One.undo()
+One.get(1).text // undefined
+One.redo()
+One.get(1).text // "background"
+```
+
 ###Immutable 
 All data is immutable. Once an item enters the cache it freezes and cannot change. This is to enable quick identity checks against immutable entities (ie React identity check). 
 
-    let item = {uid:1}
-    Object.isFrozen(item) // false
-    
-    One.put(item);
-    Object.isFrozen(item) // true
-    
-    let result = One.get(item)
-    result === item // true
+```js
+let item = {uid:1}
+Object.isFrozen(item) // false
+
+One.put(item);
+Object.isFrozen(item) // true
+
+let result = One.get(item)
+result === item // true
+```
 
 If you later want to edit a reference of the object you can get an editable copy from the cache. This gives you a separate clone of the object that is now editable:
 
-    let item = {uid:1}
-    One.put(item)
-    
-    let editable = One.getEdit(1) // or cuid.getEditable(item1);
-    Object.isFrozen(editable) // false
-    item === editable // false
-    
-    editable.text = "test"
-    One.put(editable)
-    
-    let edited = One.get(1)
-    edited.text = "text" // true
-    Object.isFrozen(edited) // true
+```js
+let item = {uid:1}
+One.put(item)
+
+let editable = One.getEdit(1) // or cuid.getEditable(item1);
+Object.isFrozen(editable) // false
+item === editable // false
+
+editable.text = "test"
+One.put(editable)
+
+let edited = One.get(1)
+edited.text = "text" // true
+Object.isFrozen(edited) // true
+```
 
 Editing an item changes all its instances in the cache:
 
-    let item = {uid:1}
-    let item2 = {uid:1, child:item}
-    One.put(item2)
-    One.get(1) === item // true
-    One.get(2) === item2 // true
-    
-    // Let's do some editing
-    let editable = One.getEdit(1);
-    editable.text = "test"
-    One.put(editable) // also updates item2 reference to item
-    
-    let result = One.get(2)
-    console.log(JSON.stringify(result.item)) // {uid:1, text:"test"}
+```js
+let item = {uid:1}
+let item2 = {uid:1, child:item}
+One.put(item2)
+One.get(1) === item // true
+One.get(2) === item2 // true
+
+// Let's do some editing
+let editable = One.getEdit(1);
+editable.text = "test"
+One.put(editable) // also updates item2 reference to item
+
+let result = One.get(2)
+console.log(JSON.stringify(result.item)) // {uid:1, text:"test"}
+```
 
 
 ###Motivation
