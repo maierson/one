@@ -7,6 +7,20 @@
 Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache 
 for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.
 
+###Usage
+
+```
+npm install one --save-dev
+```
+
+```js
+import * as cache from 'one';
+let One = cache.createCache();
+
+// or with debugging options
+let One = cache.createCache(true);
+```
+
 ###Api
 There are three significant operation types to be aware of:
 * **[put](https://maierson.gitbooks.io/one/content/put.html) / [get](https://maierson.gitbooks.io/one/content/get.html) / [evict](https://maierson.gitbooks.io/one/content/evict.html)** - items go into the cache with a ```put``` operation and come out with a ```get``` call. Use ```evict``` to force items out of the cache.
