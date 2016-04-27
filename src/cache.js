@@ -2101,15 +2101,16 @@ function getCache(debugParam = false) {
 
     /**
      * Quick identity check to see if the entity instance is present in the cache.
-     * @param uidEntity
+     * @param {{}} uidEntity
+     * @param {string} threadId id of the thread on which the entity is compared for identity
      * @returns {boolean}
      */
-    const isDirty = uidEntity => {
+    const isDirty = (uidEntity, threadId = MAIN_THREAD_ID) => {
         if (!hasUid(uidEntity)) {
             return true;
         }
         let uid      = uidEntity[config.prop.uidName];
-        let existing = get(uid);
+        let existing = get(uid, threadId);
         if (!existing) {
             return true;
         }

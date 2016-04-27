@@ -366,6 +366,20 @@ describe("One", function () {
             expect(One.isDirty(One.getEdit(1))).to.be.true;
         });
 
+        it("detects dirty entity on thread", function(){
+            One.put({uid:1}, "thread1");
+            let result = One.get(1);
+            One.put({uid:1, text:"test"});
+            One.put({uid:1, text:"test2"}, "thread1");
+            expect(One.isDirty(result)).to.be.true;
+            One.undo(); // main thread
+            expect(One.isDirty(result)).to.be.true;
+            expect(One.isDirty(result, "thread1")).to.be.true;
+            One.undo("thread1");
+            expect(One.isDirty(result)).to.be.true;
+            expect(One.isDirty(result, "thread1")).to.be.false;
+        });
+
         // this goes one back, removes all the items after the current state
         // and adds a new state with the appropriate changes
         it("puts and updates entity correctly after undo", function () {
