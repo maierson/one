@@ -16,7 +16,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
         return obj;
     }
 
-    if (freeze && uidReference && !Object.isFrozen(uidReference)) {
+    if (freeze === true && uidReference && !Object.isFrozen(uidReference)) {
         Object.freeze(uidReference);
     }
 
@@ -27,8 +27,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
 
     // shallow copy first
     let result = Object.assign({}, obj);
-    var propName;
-    for (propName in result) {
+    for (let propName in result) {
         if (result.hasOwnProperty(propName)) {
             let value = result[propName];
             if (value) {
@@ -36,7 +35,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
                     result[propName] = deepCloneArray(value, uidReference, force);
                 } else if (isDate(value)) {
                     let date = new Date(value.getTime());
-                    if (freeze) {
+                    if (freeze === true) {
                         Object.freeze(date);
                     }
                     result[propName] = date;
@@ -60,7 +59,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
             }
         }
     }
-    if (freeze && !Object.isFrozen(result)) {
+    if (freeze === true && !Object.isFrozen(result)) {
         Object.freeze(result);
     }
     return result;
@@ -71,10 +70,11 @@ function deepCloneArray(arr, uidReference, force) {
         if (isArray(item)) {
             return deepCloneArray(item, uidReference, force);
         } else if (isObject(item)) {
+            // *** keep items inside clones as we're not editing them = must getEdit on item
             if (hasUid(item) && force === false) {
                 return item;
             } else {
-                return deepClone(item, uidReference, true, force);
+                return deepClone(item, uidReference, force);
             }
         } else {
             return item;
@@ -119,7 +119,7 @@ export function isObject(mixed_var) {
     // would cause all existing properties to be replaced by null
     // if such property existed and was null on the incoming object
     return mixed_var !== null && typeof mixed_var === 'object';
-};
+}
 
 /**
  * checks if argument is an array
@@ -137,7 +137,7 @@ export function isArray(value) {
             && typeof value.splice === 'function'
             && !(value.propertyIsEnumerable('length'))
         );
-};
+}
 
 /**
  *

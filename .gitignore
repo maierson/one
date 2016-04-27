@@ -3,5 +3,6 @@ dist/
 lib/
 node_modules/
 coverage/
+npm-debug.log
 .npmignore
 webpack.tt.config.js

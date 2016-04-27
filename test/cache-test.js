@@ -10,7 +10,7 @@ import {
 import createCache from '../src/cache';
 import * as config from '../src/utils/config';
 import {deepClone, isArray} from '../src/utils/clone';
-import path from "object-path";
+import * as path from "../src/utils/path";
 import {describe, it} from 'mocha/lib/mocha.js';
 
 describe("One", function () {
@@ -18,6 +18,7 @@ describe("One", function () {
     "use strict";
 
     let One;
+    //let path;
 
     function printCache() {
         print(One, "CACHE");
@@ -25,6 +26,7 @@ describe("One", function () {
 
     beforeEach(function () {
         One = createCache(true);
+       // path = opath();
         // reset config before each call
         One.config({
             uidName         : "uid",
@@ -34,38 +36,7 @@ describe("One", function () {
 
     afterEach(function () {
         One.reset();
-    });
-
-    describe("clone", function () {
-        it("clones an object deeply", function () {
-            let date   = new Date();
-            let item1  = {uid: 1};
-            let item2  = {uid: 2, date: date};
-            let item3  = {uid: 3, arr: [1, 2]};
-            let item4  = {
-                uid : 4,
-                arr : [1, item1, "string", [item1, item2]],
-                item: item3
-            };
-            let result = deepClone(item4);
-            expect(result === item4).to.be.false;
-            expect(result.uid).to.equal(4);
-            expect(result.arr[0]).to.equal(1);
-            expect(result.arr[1] == item1).to.be.true;
-            expect(result.arr[1].uid).to.equal(1);
-            expect(result.arr[2]).to.equal("string");
-
-            expect(isArray(result.arr[3])).to.be.true;
-            expect(result.arr[3][0] === item1).to.be.true;
-            expect(result.arr[3][0].uid).to.equal(1);
-
-            // item 2 inner clone
-            expect(result.arr[3][1] === item2).to.be.true;
-            expect(result.arr[3][1].uid).to.equal(2);
-            // stops at the parent uid item
-            expect(result.arr[3][1].date === date).to.be.true;
-            expect(result.arr[3][1].date.getTime()).to.equal(date.getTime());
-        });
+       // path = null;
     });
 
     describe("put / get", function () {
@@ -833,12 +804,12 @@ describe("One", function () {
             editableItem.children.push(item4);
 
             One.put(editableItem);
-            let result = One.get(1);
 
+            let result = One.get(1);
             expect(result.children[0].uid).to.equal(4);
-            expect(One.refFrom(4)["1"][0]).to.equal("children");
+            expect(One.refFrom(4)["1"][0]).to.equal("children.0");
             expect(One.refTo(1)["3"]).to.be.undefined;
-            expect(One.refTo(1)["4"][0]).to.equal("children");
+            expect(One.refTo(1)["4"][0]).to.equal("children.0");
         });
 
         it("does not put if there are no changes to the item", function () {
@@ -1018,36 +989,36 @@ describe("One", function () {
         });
 
         // doesn't replace existing items in the cache even if they are different when commit is weak
-        it("commits weak correctly", function(){
-            let item1 = {uid:1};
+        it("commits weak correctly", function () {
+            let item1 = {uid: 1};
             let item2 = {
-                uid:2,
-                item:item1
+                uid : 2,
+                item: item1
             };
             One.put(item2);
-            let newItem1 = {uid:1, text:"test"};
-            let count = One.queue(newItem1);
+            let newItem1 = {uid: 1, text: "test"};
+            let count    = One.queue(newItem1);
             expect(count).to.equal(0);
 
             count = One.queue(newItem1, true);
             expect(count).to.equal(1);
         });
 
-        it("replaces cache items on commit strong", function(){
+        it("replaces cache items on commit strong", function () {
             let item = {
-                uid:1,
-                item:{uid:2},
-                items:[{uid:2}],
-                inner:{
-                    uid:3,
-                    item:{uid:2}
+                uid  : 1,
+                item : {uid: 2},
+                items: [{uid: 2}],
+                inner: {
+                    uid : 3,
+                    item: {uid: 2}
                 }
             };
             One.put(item);
 
             let item2 = {
-                uid:4,
-                item:{uid:2, text:"test"}
+                uid : 4,
+                item: {uid: 2, text: "test"}
             };
             One.queue(item2);
             let result = One.get(2);
@@ -1057,23 +1028,64 @@ describe("One", function () {
             expect(result.text).to.equal("test");
         });
 
-        it("replaces cache items deeply on commit strong", function(){
+        it("builds correct refTo path inside simple array", function () {
+            let item1 = {uid: 1};
+            let item2 = {
+                uid     : 2,
+                children: [
+                    item1
+                ]
+            };
+            One.put(item2);
+            expect(One.refTo(2)["1"][0]).to.equal("children.0");
+        });
+
+        it("builds correct refTo path inside array", function () {
+            let item1 = {uid: 1};
+            let item2 = {
+                uid     : 2,
+                children: [
+                    {
+                        item: {
+                            refs: [
+                                {val: "random"},
+                                {
+                                    inner: item1
+                                }
+                            ]
+                        }
+                    }
+                ]
+            };
+            //let item2 = {
+            //    uid : 2,
+            //    item: {
+            //        children: [{
+            //            item: item1
+            //        }]
+            //    }
+            //};
+            One.put(item2);
+            expect(One.refTo(2)["1"][0]).to.equal("children.0.item.refs.1.inner");
+        });
+
+        it("replaces cache items deeply on commit strong", function () {
             let item = {
-                uid:1,
-                item:{uid:2},
-                items:[{uid:2}],
-                inner:{
-                    uid:3,
-                    item:{uid:2}
+                uid  : 1,
+                item : {uid: 2},
+                items: [{uid: 2}],
+                inner: {
+                    uid : 3,
+                    item: {uid: 2}
                 }
             };
             One.put(item);
 
             let item2 = {
-                uid:4,
-                item:[{
-                    item:{
-                        val:{uid:2, text:"test"}
+                uid : 4,
+                item: [{
+                    item: {
+                        val: {uid: 2, text: "test"}
                     }
                 }]
             };
@@ -1083,10 +1095,8 @@ describe("One", function () {
             One.commit("main", true);
             result = One.get(2);
             let refFrom = One.refFrom(2);
-            return;
             expect(refFrom["4"]).to.not.be.undefined;
-            expect(refFrom["4"]).to.equal("item.item.val"); // ?????
-            //One.print();
+            expect(refFrom["4"][0]).to.equal("item.0.item.val");
             expect(result.text).to.equal("test");
         });
 
@@ -1543,7 +1553,7 @@ describe("One", function () {
 
             expect(One.refFrom(1)["2"].length).to.equal(1);
 
-            editable      = One.getEdit(2);
+            editable       = One.getEdit(2);
             editable.items = undefined;
             One.put(editable);
 
@@ -1663,8 +1673,8 @@ describe("One", function () {
                 items: [item]
             };
             One.put(item2);
-            expect(One.refTo(2)["1"][0]).to.equal("items");
-            expect(One.refFrom(1)["2"][0]).to.equal("items");
+            expect(One.refTo(2)["1"][0]).to.equal("items.0");
+            expect(One.refFrom(1)["2"][0]).to.equal("items.0");
         });
 
         it("builds the prop chain correctly for nested array", function () {
@@ -1676,8 +1686,8 @@ describe("One", function () {
             //TODO maybe keep track of number of refs inside an array to know how deep to search (might be overkill and
             // better to just iterate the array to the end when removing references
             One.put(item2);
-            expect(One.refTo(2)["1"][0]).to.equal("items");
-            expect(One.refFrom(1)["2"][0]).to.equal("items");
+            expect(One.refTo(2)["1"][0]).to.equal("items.0");
+            expect(One.refFrom(1)["2"][0]).to.equal("items.0");
         });
 
         it("removes references within array when deleting item from cache", function () {
@@ -2306,8 +2316,8 @@ describe("One", function () {
             let a = {uid: 1};
             One.put(a);
             let config = {
-                    uidName: "uuid"
-                }
+                uidName: "uuid"
+            }
             expect(() => {
                 One.config(config)
             }).to.throw(Error);

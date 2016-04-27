@@ -3,7 +3,7 @@
 import {isObject, isArray, hasUid, cloneSet, deepClone} from './utils/clone';
 import deepFreeze from './utils/deepFreeze';
 import * as config from './utils/config';
-import objectPath from 'object-path';
+import * as opath from './utils/path';
 
 import {ENTITY, REF_FROM, REF_TO, UPDATED_KEY} from './utils/constants';
 
@@ -282,6 +282,7 @@ function getCache(debugParam = false) {
      * Puts an item on the cache and updates all its references to match any present in the item's entity tree
      * @param {Object|Object[]} entityOrArray object to be put into the context
      * @param {string|string[]} threadIds id or array of ids for all the threads this items should be added to
+     * @param {boolean} strong force replace items on the cache even if they exist
      * @returns {*} true if the cache has been modified, false otherwise or the object itself if the item has no uid
      */
     const put = (entityOrArray, threadIds = MAIN_THREAD_ID, strong = true) => {
@@ -301,7 +302,7 @@ function getCache(debugParam = false) {
             // map of potential evicts in case of de-referencing
             const evictMap = new Map();
             flushMap.set(UPDATED_KEY, false); // track whether the map has changed updated
-            buildFlushMap(entityOrArray, flushMap, null, evictMap);
+            buildFlushMap(entityOrArray, flushMap, null, evictMap, strong);
             updatePointers(flushMap);
 
             // track if data actually changed
@@ -653,6 +654,7 @@ function getCache(debugParam = false) {
 
     /**
      * Commits any pending items that might be pending (ie putQueue)
+     *
      * @param {string|number|Array<string>} threadIds optional stream ids to commit to
      * @param {boolean} strong set to true to replace existing items in the cache, false to maintain existing items
      */
@@ -685,6 +687,12 @@ function getCache(debugParam = false) {
         evictQueue[uidEntity[config.prop.uidName]] = uidEntity;
     };
 
+    /**
+     * Gets an item from the queue if existing.
+     *
+     * @param uidOrEntity
+     * @returns {*}
+     */
     const getQueued = uidOrEntity => {
         let realUid = getActualUid(uidOrEntity);
         if (!realUid) {
@@ -713,6 +721,7 @@ function getCache(debugParam = false) {
      * Gets a frozen item out of the cache if existing. This item is for display purposes only (not editable) and is
      * the actual object stored in the cache (not a clone). This is so that we can perform an actual fast identity op
      * when checking for isDirty()
+     *
      * @param uidOrEntityOrArray
      * @param threadId optional parameter to retrieve the object on a specific thread. Defaults to main
      */
@@ -842,14 +851,9 @@ function getCache(debugParam = false) {
                          the ref entity when cloning - it will be updated wherever it is encountered during cloning */
                         if (parentItem && paths.length > 0) {
                             let firstPath = paths[0];
-                            let targetRef = objectPath.get(parentItem[ENTITY], firstPath);
+                            let targetRef = opath.get(parentItem[ENTITY], firstPath);
                             // check for dirty
-                            let dirty = false;
-                            if (isArray(targetRef)) {
-                                dirty = !isInArray(item[ENTITY], targetRef);
-                            } else {
-                                dirty = (targetRef && targetRef !== item[ENTITY]);
-                            }
+                            let dirty = (targetRef && targetRef !== item[ENTITY]);
                             if (dirty === true) {
                                 parentItem = ensureItem(parentItem[ENTITY], flushMap);
                                 // the entity is still frozen here - clone it to update and freeze it deeply
@@ -864,42 +868,6 @@ function getCache(debugParam = false) {
         pointerMap.forEach((value, key) => {
             flushMap.set(key, value);
         });
-    };
-
-    /**
-     * Checks recursively whenter a uid item is inside an array
-     *
-     * @param {{} | string} entity entity or uid of entity being checked for existence
-     * @param arr arrray being searched
-     * @returns {boolean} true if found, false otherwise
-     */
-    const isInArray = (entity, arr) => {
-        let result = false;
-        arr.forEach(item => {
-            if (item === entity || (typeof entity === "string" && String(item[config.prop.uidName]) === entity )) {
-                result = true;
-            }
-            if (isArray(item)) {
-                result = isInArray(entity, item);
-            }
-        });
-        return result;
-    };
-
-    const removeIfFound = (uid, arr) => {
-        if (typeof uid !== "string") {
-            return false;
-        }
-        let found = arr.some(item => {
-            if (isArray(item)) {
-                removeIfFound(item);
-            }
-            return String(item[config.prop.uidName]) === uid;
-        });
-        if (found === true) {
-            let index = arr.indexOf(uid);
-            arr.splice(index, 1);
-        }
     };
 
     /**
@@ -1050,22 +1018,20 @@ function getCache(debugParam = false) {
                 if (refTo.hasOwnProperty(refToUid)) {
                     // get the list of paths
                     let paths = refTo[refToUid];
-
                     // update the paths array to contain only the remaining references
                     let updatedPaths = paths.map(path => {
-                        let found     = false;
-                        let reference = objectPath.get(item[ENTITY], path);
-
-                        if (isArray(reference)) {
-                            found = isInArray(String(refToUid), reference);
-                        } else {
-                            found = !reference ? false : true;
+                        let reference = opath.get(item[ENTITY], path);
+                        if (reference) {
+                            let targetUid = reference[config.prop.uidName];
+                            if (targetUid) {
+                                // *** keep double equality here to convert strings to numbers
+                                let found = targetUid == refToUid;
+                                if (found === true) {
+                                    return path;
+                                }
+                            }
                         }
-                        if (found === false) {
-                            removeRefFrom_Value(entityUid, refToUid, path, flushMap, evictMap);
-                        } else {
-                            return path;
-                        }
+                        removeRefFrom_Value(entityUid, refToUid, path, flushMap, evictMap);
                     }).filter(item => {
                         return item !== null && item !== undefined;
                     });
@@ -1263,12 +1229,7 @@ function getCache(debugParam = false) {
         }
         let refPaths = parentItem[REF_TO][refUid];
         refPaths.forEach(path => {
-            let ref = objectPath.get(parent, path);
-            if (isArray(ref)) {
-                removeIfFound(refUid, ref);
-            } else {
-                objectPath.del(parent, path);
-            }
+            opath.del(parent, path);
         });
         if (!Object.isFrozen(parent)) {
             Object.freeze(parent);
@@ -1398,11 +1359,13 @@ function getCache(debugParam = false) {
      * @param refPath
      */
     const cacheArrRefs = (entity, flushMap, parentUid, evictMap, refPath = "") => {
-        entity.forEach(item => {
+        let path;
+        entity.forEach((item, index) => {
+            path = refPath + "." + index;
             if (isArray(item)) {
-                cacheArrRefs(item, flushMap, parentUid, evictMap, refPath);
+                cacheArrRefs(item, flushMap, parentUid, evictMap, path);
             } else if (isObject(item)) {
-                cacheObjRefs(item, flushMap, parentUid, evictMap, refPath);
+                cacheObjRefs(item, flushMap, parentUid, evictMap, path);
             }
         });
         Object.freeze(entity);
