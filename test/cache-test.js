@@ -901,6 +901,10 @@ describe("One", function () {
             expect(result.child).to.equal(null);
         });
 
+        it("returns item if primitive", function () {
+            expect(One.put(1).success).to.be.false;
+        });
+
         it("returns proper boolean when putting item", function () {
             let item2 = {uid: 2};
             let item3 = {uid: 3};
@@ -963,6 +967,46 @@ describe("One", function () {
             expect(One.get(3)).to.not.be.undefined;
 
             expect(Object.isFrozen(One.get(3))).to.be.false;
+        });
+
+        it("finds queued item", function () {
+            One.queue({uid: 1});
+            expect(One.getQueued(1)).to.not.be.undefined;
+        });
+
+        it("unQueues item previously queued", function () {
+            One.queue({uid: 1});
+            One.unQueue(1);
+            expect(One.getQueued(1)).to.be.undefined;
+            expect(One.get(1)).to.be.undefined;
+        });
+
+        it("returns undefined on not real uid", function () {
+            expect(One.unQueue(true)).to.be.undefined;
+        });
+
+        it("returns false on not existing uid", function () {
+            expect(One.unQueue(123)).to.be.false;
+        });
+
+        it("returns false history state on commiting empty queue", function () {
+            expect(One.commit().success).to.be.false;
+        });
+
+        it("doesn't get queued if not real uid", function () {
+            expect(One.getQueued(true)).to.be.undefined;
+        });
+
+        it("queues for evict if valid uid entity", function () {
+            expect(One.queueEvict({uid: 1})).to.be.true;
+        });
+
+        it("doesn't queue for evict if no uid", function () {
+            expect(One.queueEvict({})).to.be.false;
+        });
+
+        it("doesn't queue for evict if no entity", function () {
+            expect(One.queueEvict()).to.be.false;
         });
 
         it("does not replace existing cached entity when putting shallow", function () {
@@ -1433,10 +1477,10 @@ describe("One", function () {
         });
 
         it("gets an edit item from the correct thread", function () {
-            One.put({uid:1});
+            One.put({uid: 1});
             One.put({uid: 1, text: "test"}, "thread1");
-            One.put({uid:1 , text:"middle"});
-            One.put({uid:1, text:"final"}, "thread1");
+            One.put({uid: 1, text: "middle"});
+            One.put({uid: 1, text: "final"}, "thread1");
             One.undo("thread1");
             let mainEdit = One.getEdit(1);
             expect(mainEdit.text).to.equal("final");
@@ -1446,6 +1490,16 @@ describe("One", function () {
     });
 
     describe("evict", function () {
+
+        it("returns false if nothing evicted", function () {
+            expect(One.evict({})).to.be.false;
+            expect(One.evict()).to.be.false;
+            expect(One.evict(true)).to.be.false;
+        });
+
+        it("fails on non existing uid", function(){
+            expect(One.evict(["one", 1])).to.be.false;
+        })
 
         it("removes item from cache when evicting", function () {
             let item1 = {uid: 1, value: "test"};
@@ -1902,6 +1956,12 @@ describe("One", function () {
     })
 
     describe("thread", function () {
+        it("puts to thread with number id", function () {
+            One.put({uid: 1, text: "test"}, 1);
+            expect(One.get(1, 1)).to.not.be.undefined;
+            expect(One.get(1, 1).text).to.equal("test");
+        });
+
         it("does not replace thread if already started on thread call", function () {
             let result = One.put({uid: 1}); // current 0
 
@@ -2288,6 +2348,31 @@ describe("One", function () {
             editable.transfer = tr2;
             let historyState  = One.put(editable, "thread1");
             expect(One.size()).to.equal(5);
+        });
+
+        it("does not cut main thread", function () {
+            One.put({uid: 1});
+            expect(()=> {
+                One.cutThread("main")
+            }).to.throw(TypeError);
+        });
+
+        it("returns false on non existing thread", function () {
+            expect(One.cutThread().success).to.be.false;
+        });
+
+        it("returns false for non existing thread", function () {
+            expect(One.cutThread(69).success).to.be.false; // how sad
+        });
+
+        it("doesn't commit main thread", function () {
+            expect(() => {
+                One.closeThread("main")
+            }).to.throw(TypeError);
+        });
+
+        it("fails silently on non existing thread", function () {
+            expect(() => One.closeThread(123)).to.not.throw(Error);
         })
     });
 

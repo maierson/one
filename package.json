@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rimraf lib dist coverage",
     "test": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
-    "cov": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec",
+    "cov": "istanbul cover ./node_modules/mocha/bin/_mocha -- -R spec",
     "build:js": "webpack --config webpack.config.js",
     "build:js:min": "webpack --config webpack.config.production.js",
     "build:lib": "babel src --out-dir lib",

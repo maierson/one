@@ -195,13 +195,6 @@ function getCache(debugParam = false) {
     }
 
     /**
-     * @returns {*} the main thread from the thread pool.
-     */
-    function getMain() {
-        return cacheThreads[MAIN_THREAD_ID];
-    }
-
-    /**
      * @returns {*} a newly created cache node after adding it to the repo.
      */
     function getNewCacheNode() {
@@ -319,7 +312,7 @@ function getCache(debugParam = false) {
             }
             return getHistoryState(success);
         } else {
-            return entityOrArray;
+            return getHistoryState(false);
         }
     };
 
@@ -350,7 +343,7 @@ function getCache(debugParam = false) {
             threadIds = [threadId];
         } else if (typeof threadId === "number") {
             threadId = String(threadId);
-            if (validate) {
+            if (validate){
                 validateThread(threadId);
             }
             threadIds = [threadId];
@@ -373,9 +366,6 @@ function getCache(debugParam = false) {
      * @param {string} targetThreadId optional - id of thread to assign closed remaining nodes to
      */
     const closeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
-        if (typeof threadId === "undefined") {
-            throw new TypeError("Cannot close thread. Missing thread id");
-        }
         return commitThread(threadId, true, targetThreadId);
     };
 
@@ -387,9 +377,6 @@ function getCache(debugParam = false) {
      * @param {string} targetThreadId optional - id of thread to assign merged nodes
      */
     const mergeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
-        if (typeof threadId === "undefined") {
-            throw new TypeError("Cannot merge thread. Missing threadId");
-        }
         return commitThread(threadId, false, targetThreadId);
     };
 
@@ -439,7 +426,7 @@ function getCache(debugParam = false) {
      */
     const commitThread = (threadId, clean = true, targetThreadId = MAIN_THREAD_ID) => {
         if (typeof threadId === "undefined") {
-            return;
+            throw new TypeError("Cannot commit thread. Missing treadId");
         }
         if (threadId === MAIN_THREAD_ID) {
             throw new TypeError("You may not remove the main thread");
@@ -682,9 +669,10 @@ function getCache(debugParam = false) {
      */
     const queueEvict = uidEntity => {
         if (!uidEntity || !hasUid(uidEntity)) {
-            return;
+            return false;
         }
         evictQueue[uidEntity[config.prop.uidName]] = uidEntity;
+        return true;
     };
 
     /**
@@ -699,22 +687,6 @@ function getCache(debugParam = false) {
             return;
         }
         return putQueue[realUid];
-    };
-
-    const hasPutQueue = () => {
-        return Object.keys(putQueue).length > 0;
-    };
-
-    const hasEvictQueue = () => {
-        return Object.keys(evictQueue).length > 0;
-    };
-
-    /**
-     * Checks whether there are any pooled changes pending in the cache. Useful to enable a "Save" button.
-     * @returns {boolean}
-     */
-    const hasQueue = () => {
-        return hasPutQueue() || hasEvictQueue();
     };
 
     /**
@@ -750,7 +722,6 @@ function getCache(debugParam = false) {
         if (uidArray.length == 0) {
             return false;
         }
-
         let currentState = getCurrentMainStack();
         let found        = uidArray.some(item => {
             return currentState && currentState.has(String(item));
@@ -808,8 +779,10 @@ function getCache(debugParam = false) {
                 if (hasUid(item)) {
                     uidArray.push(String(item[config.prop.uidName]));
                 } else {
-                    // assuming it's an uid
-                    uidArray.push(String(item));
+                    if(typeof item === "string" || typeof item === "number"){
+                        uidArray.push(String(item))
+                    }
+                    // else nothing - skip it
                 }
             });
         } else {
@@ -818,7 +791,7 @@ function getCache(debugParam = false) {
                 uid = obj[config.prop.uidName];
             }
             if (uid === undefined) {
-                return false;
+                return uidArray;
             }
             uidArray.push(String(uid));
         }
@@ -831,8 +804,6 @@ function getCache(debugParam = false) {
      * @param flushMap
      */
     const updatePointers = (flushMap) => {
-        // collect all items changed in the pointerUpdateMap
-        let pointerMap = new Map();
         // at this point all items are added into the flush map - update their pointers if applicable
         flushMap.forEach((item, key) => {
             if (key !== UPDATED_KEY) {
@@ -863,10 +834,6 @@ function getCache(debugParam = false) {
                     }
                 }
             }
-        });
-        // put all the updates into the flush map before persisting
-        pointerMap.forEach((value, key) => {
-            flushMap.set(key, value);
         });
     };
 
@@ -1470,6 +1437,7 @@ function getCache(debugParam = false) {
                             if (newRefs.hasOwnProperty(refUid)) {
                                 newRefCount = newRefs[refUid];
                             }
+                            /* istanbul ignore if: never really gets here but I'm afraid to remove it */
                             if (existingRefCount > 0 && newRefCount == 0) {
                                 // item was completely removed from all entitie's references - must remove its
                                 // pointer to the entity
@@ -2040,7 +2008,7 @@ function getCache(debugParam = false) {
     const print = () => {
         let result     = "";
         let index      = 0;
-        let mainThread = getMain();
+        let mainThread = cacheThreads[MAIN_THREAD_ID];
         let current    = mainThread.current;
         mainThread.nodes.map(cacheNodeId => {
             let streamData = "";
@@ -2215,7 +2183,6 @@ function getCache(debugParam = false) {
         //base.append   = append;
 
         base.getCurrentNode = getCurrentThreadNode;
-        base.hasQueue       = hasQueue;
 
         base.refFrom = refFrom;
         base.refTo   = refTo;
