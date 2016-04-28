@@ -34,7 +34,7 @@ describe("utils", function () {
                 e: [{}, {f: 'g'}],
                 f: 'i'
             },
-            c:{uid:1}
+            c: {uid: 1}
         };
     }
 
@@ -50,24 +50,48 @@ describe("utils", function () {
                 obj.prototype.z = 5
             }).to.throw(TypeError);
         });
+
+        it("should not blow up on null object", function () {
+            expect(deepFreeze()).to.be.undefined;
+        })
     });
 
     describe("clone", function () {
+        it("hasUid should return false on non object", function(){
+           expect(hasUid()).to.be.false;
+        });
+
+        it("should not clone if not object or array", function () {
+            expect(deepClone(2)).to.equal(2);
+        });
+
+        it("should clone date", function(){
+           let date = new Date();
+            let item1 = {uid:1, date: date};
+            let result = deepClone(item1);
+            expect(result.date).to.not.be.undefined;
+            expect(result.date === date).to.be.false;
+            expect(result.date.time === date.time).to.be.true;
+            expect(Object.isFrozen(result.date)).to.be.true;
+        });
+
         it("should clone deeply", function () {
-            let obj = getTestObj();
+            let obj    = getTestObj();
             let result = deepClone(obj);
             expect(result).to.not.be.undefined;
             expect(obj === result).to.be.false;
             expect(Object.isFrozen(result)).to.be.true;
         });
 
-        it("should replace item", function(){
-            let obj = getTestObj();
-            let result = deepClone(obj, {uid:1, text:"test"});
+        it("should replace item", function () {
+            let obj    = getTestObj();
+            let result = deepClone(obj, {uid: 1, text: "test"});
             expect(result.c).to.not.be.undefined;
             expect(Object.isFrozen(result.c)).to.be.true;
             expect(result.c.text).to.equal("test");
-            expect(() => {result.c.text = "new"}).to.throw(TypeError);
+            expect(() => {
+                result.c.text = "new"
+            }).to.throw(TypeError);
         });
 
         it("clones an object deeply", function () {
@@ -100,16 +124,16 @@ describe("utils", function () {
             expect(result.arr[3][1].date.getTime()).to.equal(date.getTime());
         });
 
-        it("should replace item not freeze", function(){
-            let obj = getTestObj();
-            let result = deepClone(obj, {uid:1, text:"test"}, false);
+        it("should replace item not freeze", function () {
+            let obj    = getTestObj();
+            let result = deepClone(obj, {uid: 1, text: "test"}, false);
             expect(result.c).to.not.be.undefined;
             expect(Object.isFrozen(result.c)).to.be.false;
             expect(result.c.text).to.equal("test");
         });
 
-        it("has uid", function(){
-            expect(hasUid({uid:1})).to.be.true;
+        it("has uid", function () {
+            expect(hasUid({uid: 1})).to.be.true;
             expect(hasUid({})).to.be.false;
         })
     });

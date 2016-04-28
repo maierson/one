@@ -85,6 +85,7 @@ export default function createCache(debug = true, libName = "One") {
         }
         return window[libName];
     }
+    /* istanbul ignore next */
     return getCache(debug);
 }
 
@@ -156,9 +157,6 @@ function getCache(debugParam = false) {
      * @returns {boolean} whether the thread was found
      */
     function hasThread(threadId) {
-        if (typeof threadId === "undefined") {
-            return false;
-        }
         return cacheThreads[threadId] != undefined;
     }
 
@@ -170,9 +168,6 @@ function getCache(debugParam = false) {
      */
     /* hoisted for reset - keep as function def*/
     function createThread(threadId) {
-        if (typeof threadId === "undefined") {
-            throw new ReferenceError("Cannot create thread. Missing thread id");
-        }
         if (hasThread(threadId)) {
             return cacheThreads[threadId];
         }
@@ -231,13 +226,12 @@ function getCache(debugParam = false) {
 
         Object.defineProperty(obj, "removeThread", {
             value     : threadId => {
+                /* istanbul ignore else */
                 if (typeof obj[threadId] !== "undefined") {
                     obj[threadId] = undefined;
                     //delete obj[threadId];
                     obj.length -= 1;
-                    return true;
                 }
-                return false;
             },
             enumerable: false,
             writable  : false
@@ -331,32 +325,27 @@ function getCache(debugParam = false) {
         let validate = withCreate === true;
         if (isArray(threadId)) {
             if (validate) {
-                threadId.forEach((item) => {
-                    validateThread(item);
+                threadId.forEach((thdId) => {
+                    createThread(thdId);
                 });
             }
             threadIds = threadId;
         } else if (typeof threadId === "string") {
             if (validate) {
-                validateThread(threadId);
+                createThread(threadId);
             }
             threadIds = [threadId];
         } else if (typeof threadId === "number") {
             threadId = String(threadId);
-            if (validate){
-                validateThread(threadId);
+            /* istanbul ignore else */
+            if (validate) {
+                createThread(threadId);
             }
             threadIds = [threadId];
         } else {
             throw new TypeError("Thread id must be one of 'string', 'number' or an array of strings or numbers");
         }
         return threadIds;
-    };
-
-    const validateThread = threadId => {
-        if (!hasThread(threadId)) {
-            createThread(threadId);
-        }
     };
 
     /**
@@ -779,7 +768,7 @@ function getCache(debugParam = false) {
                 if (hasUid(item)) {
                     uidArray.push(String(item[config.prop.uidName]));
                 } else {
-                    if(typeof item === "string" || typeof item === "number"){
+                    if (typeof item === "string" || typeof item === "number") {
                         uidArray.push(String(item))
                     }
                     // else nothing - skip it
@@ -1003,9 +992,9 @@ function getCache(debugParam = false) {
                         return item !== null && item !== undefined;
                     });
 
-                    if (Object.isFrozen(item[REF_TO])) {
-                        cloneRef(item, REF_TO);
-                    }
+                    //if (Object.isFrozen(item[REF_TO])) {
+                    //    cloneRef(item, REF_TO);
+                    //}
 
                     // update or remove the paths
                     if (updatedPaths.length > 0) {
@@ -1081,23 +1070,23 @@ function getCache(debugParam = false) {
      * @returns {{}} the parentItem just in case it was cloned for purity
      */
     const addRefTo = (parentItem, refUid, path) => {
-        if (Object.isFrozen(parentItem)) {
-            parentItem = cloneItem(parentItem);
-        }
+        //if (Object.isFrozen(parentItem)) {
+        //    parentItem = cloneItem(parentItem);
+        //}
         let refTo = parentItem[REF_TO];
         if (!parentItem[REF_TO][refUid]) {
-            if (Object.isFrozen(parentItem[REF_TO])) {
-                parentItem[REF_TO] = Object.assign(getNewLengthObj(), parentItem[REF_TO]);
-                refTo              = parentItem[REF_TO];
-            }
+            //if (Object.isFrozen(parentItem[REF_TO])) {
+            //    parentItem[REF_TO] = Object.assign(getNewLengthObj(), parentItem[REF_TO]);
+            //    refTo              = parentItem[REF_TO];
+            //}
             parentItem[REF_TO][refUid] = [];
             parentItem[REF_TO].length += 1;
         }
         let refArray = refTo[refUid];
-        if (Object.isFrozen(refArray)) {
-            refTo[refUid] = refArray.slice();
-            refArray      = refTo[refUid];
-        }
+        //if (Object.isFrozen(refArray)) {
+        //    refTo[refUid] = refArray.slice();
+        //    refArray      = refTo[refUid];
+        //}
         if (refArray.indexOf(path) < 0) {
             refArray.push(path);
         }
@@ -1112,23 +1101,23 @@ function getCache(debugParam = false) {
      * @param {string} path the path inside the parent entity where the referenced entity is located
      */
     const addRefFrom = (refItem, parentUid, path) => {
-        if (Object.isFrozen(refItem)) {
-            refItem = cloneItem(refItem);
-        }
+        //if (Object.isFrozen(refItem)) {
+        //    refItem = cloneItem(refItem);
+        //}
         let refFrom = refItem[REF_FROM];
         if (!refItem[REF_FROM][parentUid]) {
-            if (Object.isFrozen(refItem[REF_FROM])) {
-                refItem[REF_FROM] = Object.assign(getNewLengthObj(), refItem[REF_FROM]);
-                refFrom           = refItem[REF_FROM];
-            }
+            //if (Object.isFrozen(refItem[REF_FROM])) {
+            //    refItem[REF_FROM] = Object.assign(getNewLengthObj(), refItem[REF_FROM]);
+            //    refFrom           = refItem[REF_FROM];
+            //}
             refItem[REF_FROM][parentUid] = [];
             refItem[REF_FROM].length += 1;
         }
         let fromArray = refFrom[parentUid];
-        if (Object.isFrozen(fromArray)) {
-            refFrom[parentUid] = fromArray.slice();
-            fromArray          = refFrom[parentUid];
-        }
+        //if (Object.isFrozen(fromArray)) {
+        //    refFrom[parentUid] = fromArray.slice();
+        //    fromArray          = refFrom[parentUid];
+        //}
         if (fromArray.indexOf(path) < 0) {
             fromArray.push(path);
         }
@@ -1137,14 +1126,14 @@ function getCache(debugParam = false) {
 
     const removeRefFrom = (item, parentUid, path) => {
         let refsArray = item[REF_FROM][parentUid];
-        if (!refsArray) {
-            return;
-        }
+        //if (!refsArray) {
+        //    return;
+        //}
 
         let index = refsArray.indexOf(path);
-        if (index < 0) {
-            return;
-        }
+        //if (index < 0) {
+        //    return;
+        //}
 
         // make an editable copy
         refsArray = refsArray.slice();
@@ -1184,9 +1173,9 @@ function getCache(debugParam = false) {
      */
     const clearRefTo = (parentItem, refUid) => {
         let refTo = parentItem[REF_TO][refUid];
-        if (!refTo) {
-            return false;
-        }
+        //if (!refTo) {
+        //    return false;
+        //}
 
         // first remove all instances of entity from the parent
         let parent = parentItem[ENTITY];
@@ -1263,18 +1252,11 @@ function getCache(debugParam = false) {
      * @param strong
      * @returns {boolean}
      */
-    const isOnCache = (entity, threadId = MAIN_THREAD_ID, strong = true) => {
-        if (!hasUid(entity)) {
-            return false;
-        }
+    const isOnCache = (entity, threadId = MAIN_THREAD_ID) => {
+        // this is only called for uid items so ok not to check for uid
         let uid          = entity[config.prop.uidName];
         let existingItem = getLiveItem(uid, threadId);
-        if (strong === true) {
-            // entities must be identical
-            return existingItem && existingItem[ENTITY] === entity;
-        }
-        // otherwise just return if it exists
-        return existingItem ? true : false;
+        return existingItem && existingItem[ENTITY] === entity;
     };
 
     /**
@@ -1361,15 +1343,15 @@ function getCache(debugParam = false) {
      * @param refPath the concatenated path of the ref entity inside the parent entity
      */
     const assignRefs = (parentItem, refItem, refPath) => {
-        if (!parentItem) {
-            throw new ReferenceError("Cannot assign reference. Missing parent item.");
-        }
-        if (!refItem) {
-            throw new ReferenceError("Cannot assign reference. Missing reference item.");
-        }
-        if (!refPath || refPath === "") {
-            throw new TypeError("Cannot assign reference. Missing property name. prop: " + refPath);
-        }
+        //if (!parentItem) {
+        //    throw new ReferenceError("Cannot assign reference. Missing parent item.");
+        //}
+        //if (!refItem) {
+        //    throw new ReferenceError("Cannot assign reference. Missing reference item.");
+        //}
+        //if (!refPath || refPath === "") {
+        //    throw new TypeError("Cannot assign reference. Missing property name. prop: " + refPath);
+        //}
 
         let parentUid = parentItem[ENTITY][config.prop.uidName];
         let refUid    = refItem[ENTITY][config.prop.uidName];
@@ -1422,42 +1404,8 @@ function getCache(debugParam = false) {
         flushArray.forEach(item => {
             // track the uid of the item being changed and referencing the items.
             let itemUid = item[ENTITY][config.prop.uidName];
-            if (itemUid !== undefined) {
-                // compare with its previous version in the cache
-                let existing = getLiveItem(itemUid);
-                if (existing) {
-                    let existingRefs = existing[REF_TO];
-                    let newRefs      = item[REF_TO];
-
-                    // refs is an plain old js object
-                    for (let refUid in existingRefs) {
-                        if (existingRefs.hasOwnProperty(refUid)) {
-                            let existingRefCount = existingRefs[refUid];
-                            let newRefCount      = 0;
-                            if (newRefs.hasOwnProperty(refUid)) {
-                                newRefCount = newRefs[refUid];
-                            }
-                            /* istanbul ignore if: never really gets here but I'm afraid to remove it */
-                            if (existingRefCount > 0 && newRefCount == 0) {
-                                // item was completely removed from all entitie's references - must remove its
-                                // pointer to the entity
-                                let refItem = temp.get(refUid);
-                                if (Object.isFrozen(refItem)) {
-                                    refItem = getNewItem(refItem[ENTITY], refItem[REF_FROM], refItem[REF_TO]);
-                                    temp.set(refUid, refItem);
-                                }
-                                // pointers is a set
-                                refItem[REF_FROM].delete(String(itemUid));
-                                if (refItem[REF_FROM].size == 0) {
-                                    temp.delete(refUid);
-                                }
-                            }
-                        }
-                    }
-                }
-                freezeItem(item);
-                temp.set(String(itemUid), item);
-            }
+            freezeItem(item);
+            temp.set(String(itemUid), item);
         });
 
         if (evictMap.size > 0) {
@@ -1477,9 +1425,6 @@ function getCache(debugParam = false) {
      * @returns {*}
      */
     const getObject = (uidOrEntity, threadId = MAIN_THREAD_ID) => {
-        if (!uidOrEntity) {
-            return;
-        }
         let realUid = getActualUid(uidOrEntity);
         if (!realUid) {
             return;
@@ -1553,14 +1498,8 @@ function getCache(debugParam = false) {
      * @returns {*}
      */
     const getEditableObject = (uidOrEntity, threadId = MAIN_THREAD_ID) => {
-        if (!uidOrEntity) {
-            return undefined;
-        }
         let realUid = getActualUid(uidOrEntity);
-        if (!realUid) {
-            return;
-        }
-        if (getQueued(uidOrEntity)) {
+        if (getQueued(realUid)) {
             return putQueue[realUid];
         }
 
@@ -1579,9 +1518,9 @@ function getCache(debugParam = false) {
      * @returns {*} an editable item corresponding to the entity on the flush map.
      */
     const ensureItem = (entity, flushMap) => {
-        if (entity === undefined) {
-            return;
-        }
+        //if (entity === undefined) {
+        //    return;
+        //}
         let itemUid = String(entity[config.prop.uidName]);
         let item    = flushMap.get(itemUid);
         if (item) {
@@ -1613,32 +1552,6 @@ function getCache(debugParam = false) {
         return item;
     };
 
-    /**
-     *
-     * @param entity the object stored in the new item
-     * @param pointers pointer uids
-     * @param refs reference uids
-     * @returns {{}}
-     */
-    const getNewItem = (entity, pointers, refs) => {
-        let item     = {};
-        item[ENTITY] = entity;
-
-        let realPointers = pointers;
-        if (realPointers === undefined) {
-            realPointers = getNewLengthObj();
-        }
-        item[REF_FROM] = realPointers;
-
-        let realRefs = refs;
-        if (realRefs === undefined) {
-            // keep track of all references and how many in this object that acts like a map
-            realRefs = getNewLengthObj();
-        }
-        item[REF_TO] = realRefs;
-        return item;
-    };
-
     const cloneItem = item => {
         let newItem = Object.assign({}, item);
         cloneRef(newItem, REF_FROM);
@@ -1657,15 +1570,6 @@ function getCache(debugParam = false) {
         }
         return (typeof getLiveItem(obj[config.prop.uidName]) !== "undefined");
     };
-
-    ///**
-    // * Goes straight to a specific index on the given thread.
-    // * @param threadId
-    // * @param index
-    // */
-    //const jump = (threadId, index) => {
-    //
-    //};
 
     /**
      * Selects the previous version of the cache from the nodes.
@@ -1854,10 +1758,6 @@ function getCache(debugParam = false) {
         }
 
         let thread = cacheThreads[threadId];
-        if (!thread) {
-            return;
-        }
-        // main thread
         if (threadId === MAIN_THREAD_ID) {
             // clear all nodes after this one
 
@@ -1898,22 +1798,10 @@ function getCache(debugParam = false) {
     const truncateThreads = removedNodes => {
         removedNodes.forEach(cacheNodeId => {
             let cacheNode = repo.get(cacheNodeId);
-            if (cacheNode) {
-                let nodeThreads = cacheNode.threads;
-                for (let prop in nodeThreads) {
-                    if (nodeThreads.hasOwnProperty(prop)) {
-                        let threadNodeIndex = nodeThreads[prop];
-                        // THREAD info is the index of the node in the thread array = remove all nodes after that.
-                        if (threadNodeIndex >= 0) {
-                            // this excludes the main thread as on main it's always -1
-                            console.log("TRUNCATE AFTER " + threadNodeIndex + " threadId" + prop);
-                        }
-                    }
-                }
+            if(cacheNode){
+                repo.delete(cacheNodeId);
             }
-            repo.delete(cacheNodeId);
         });
-
     };
 
     /**
@@ -1947,16 +1835,10 @@ function getCache(debugParam = false) {
         } else if (isArray(threadIds)) {
             theThreads = threadIds;
         }
-        if (theThreads.indexOf(MAIN_THREAD_ID) < 0) {
-            theThreads.unshift(MAIN_THREAD_ID);
-        }
         return theThreads;
     };
 
     const addThreadNode = (cacheNode, threadId) => {
-        if (typeof threadId === "undefined" || cacheNode === undefined) {
-            return;
-        }
         let thread = cacheThreads[threadId];
         if (!thread) {
             thread = createThread(threadId);
@@ -2080,9 +1962,11 @@ function getCache(debugParam = false) {
         }
         let uid      = uidEntity[config.prop.uidName];
         let existing = get(uid, threadId);
+        console.log("DIRTY " + existing)
         if (!existing) {
             return true;
         }
+        console.log("DIRT " + (existing === uidEntity));
         return existing !== uidEntity;
     };
 

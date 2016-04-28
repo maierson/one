@@ -98,15 +98,6 @@ export function hasUid(obj) {
 };
 
 /**
- * Copies a set's values into another set (shallow)
- * @param set
- */
-export function cloneSet(set) {
-    let prevSet = set || new Set();
-    return new Set([...prevSet]);
-}
-
-/**
  * Checks if argument is an object
  * @param mixed_var
  * @returns {boolean}
@@ -155,14 +146,5 @@ function objToStr(o) {
  */
 export function isDate(value) {
     return isObject(value) && objToStr(value) === '[object Date]';
-}
-
-/**
- *
- * @param value
- * @returns {boolean}
- */
-export function isRegExp(value) {
-    return isObject(value) && objToStr(value) === '[object RegExp]';
 }
 

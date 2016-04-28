@@ -18,7 +18,6 @@ describe("One", function () {
     "use strict";
 
     let One;
-    //let path;
 
     function printCache() {
         print(One, "CACHE");
@@ -26,7 +25,6 @@ describe("One", function () {
 
     beforeEach(function () {
         One = createCache(true);
-        // path = opath();
         // reset config before each call
         One.config({
             uidName         : "uid",
@@ -936,6 +934,16 @@ describe("One", function () {
     });
 
     describe("queue", function () {
+
+        it("gets edit undefined if not existing", function () {
+            expect(One.getEdit(1)).to.be.undefined;
+        });
+
+        it("gets editable from the queue", function () {
+            One.queue({uid: 1});
+            expect(One.getEdit(1)).to.not.be.undefined;
+        });
+
         it("gets from cache if existing both in queue and cache", function () {
             let item = {uid: 1};
             One.put(item);
@@ -1497,7 +1505,7 @@ describe("One", function () {
             expect(One.evict(true)).to.be.false;
         });
 
-        it("fails on non existing uid", function(){
+        it("fails on non existing uid", function () {
             expect(One.evict(["one", 1])).to.be.false;
         })
 
@@ -2506,6 +2514,40 @@ describe("One", function () {
             expect(listener2).to.have.been.calledOnce;
         })
     });
+
+    describe("print", function () {
+        it("prints", function () {
+            One.put({uid: 1});
+            expect(One.print()).to.be.undefined;
+        });
+
+        it("throws error on getHistoryState invalid param", function () {
+            One.put({uid: 1});
+            expect(() => {
+                One.getHistoryState(true, true)
+            }).to.throw(TypeError);
+        });
+    });
+
+    describe("dirty", function () {
+        it("reads non uid item as dirty", function () {
+            expect(One.isDirty({})).to.be.true;
+            expect(One.isDirty({}, 1)).to.be.true;
+        })
+
+        it("reads dirty on thread", function () {
+            let item1 = {uid: 1};
+            One.put(item1, 1);
+            expect(One.isDirty(item1, 1)).to.be.false;
+            expect(One.isDirty({uid: 1}, 1)).to.be.true;
+        })
+    })
+
+    describe("uid", function () {
+        it("creates uid", function () {
+            expect(One.uuid()).to.not.be.undefined;
+        })
+    })
 });
 
 
