@@ -21,7 +21,8 @@
     "react",
     "unique",
     "id",
-    "time travel"
+    "time travel",
+    "pure"
   ],
   "author": "Dan Maier",
   "license": "MIT",
