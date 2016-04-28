@@ -10,7 +10,7 @@ for each unique id. Entities that do not have a unique id are still cached but n
 ###Usage
 
 ```
-npm install one --save-dev
+npm install one --save
 ```
 
 ```js
