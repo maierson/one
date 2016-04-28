@@ -26,7 +26,7 @@ describe("One", function () {
 
     beforeEach(function () {
         One = createCache(true);
-       // path = opath();
+        // path = opath();
         // reset config before each call
         One.config({
             uidName         : "uid",
@@ -36,7 +36,7 @@ describe("One", function () {
 
     afterEach(function () {
         One.reset();
-       // path = null;
+        // path = null;
     });
 
     describe("put / get", function () {
@@ -366,11 +366,11 @@ describe("One", function () {
             expect(One.isDirty(One.getEdit(1))).to.be.true;
         });
 
-        it("detects dirty entity on thread", function(){
-            One.put({uid:1}, "thread1");
+        it("detects dirty entity on thread", function () {
+            One.put({uid: 1}, "thread1");
             let result = One.get(1);
-            One.put({uid:1, text:"test"});
-            One.put({uid:1, text:"test2"}, "thread1");
+            One.put({uid: 1, text: "test"});
+            One.put({uid: 1, text: "test2"}, "thread1");
             expect(One.isDirty(result)).to.be.true;
             One.undo(); // main thread
             expect(One.isDirty(result)).to.be.true;
@@ -1107,7 +1107,7 @@ describe("One", function () {
             let result = One.get(2);
             expect(result.text).to.be.undefined;
             One.commit("main", true);
-            result = One.get(2);
+            result      = One.get(2);
             let refFrom = One.refFrom(2);
             expect(refFrom["4"]).to.not.be.undefined;
             expect(refFrom["4"][0]).to.equal("item.0.item.val");
@@ -1431,7 +1431,19 @@ describe("One", function () {
             expect(result[0].uid).to.equal(1);
             expect(result[1].uid).to.equal(2);
         });
-    })
+
+        it("gets an edit item from the correct thread", function () {
+            One.put({uid:1});
+            One.put({uid: 1, text: "test"}, "thread1");
+            One.put({uid:1 , text:"middle"});
+            One.put({uid:1, text:"final"}, "thread1");
+            One.undo("thread1");
+            let mainEdit = One.getEdit(1);
+            expect(mainEdit.text).to.equal("final");
+            mainEdit = One.getEdit(1, "thread1");
+            expect(mainEdit.text).to.equal("test");
+        });
+    });
 
     describe("evict", function () {
 

@@ -1551,7 +1551,7 @@ function getCache(debugParam = false) {
      *
      * @param uidOrEntityOrArray
      */
-    const getEdit = uidOrEntityOrArray => {
+    const getEdit = (uidOrEntityOrArray, threadId) => {
         if (isArray(uidOrEntityOrArray)) {
             return uidOrEntityOrArray.map(item => {
                 return getEditableObject(item);
@@ -1559,7 +1559,7 @@ function getCache(debugParam = false) {
                 return item !== null & item !== undefined;
             })
         }
-        return getEditableObject(uidOrEntityOrArray);
+        return getEditableObject(uidOrEntityOrArray, threadId);
     };
 
     /**
@@ -1581,9 +1581,10 @@ function getCache(debugParam = false) {
      * children to not get refreshed needlessly when changing a property on the parent. Note that the children will
      * be frozen so if needing to change a child must get it editable separately.
      * @param uidOrEntity
+     * @param threadId fish out the item on the given thread id
      * @returns {*}
      */
-    const getEditableObject = uidOrEntity=> {
+    const getEditableObject = (uidOrEntity, threadId = MAIN_THREAD_ID) => {
         if (!uidOrEntity) {
             return undefined;
         }
@@ -1595,7 +1596,7 @@ function getCache(debugParam = false) {
             return putQueue[realUid];
         }
 
-        let existing = get(realUid);
+        let existing = get(realUid, threadId);
         if (!existing) {
             return;
         }
