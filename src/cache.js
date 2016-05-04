@@ -1,6 +1,6 @@
 "use strict";
 
-import {isObject, isArray, hasUid, cloneSet, deepClone} from './utils/clone';
+import {isObject, isArray, hasUid, cloneSet, deepClone, isString} from './utils/clone';
 import deepFreeze from './utils/deepFreeze';
 import * as config from './utils/config';
 import * as opath from './utils/path';
@@ -146,7 +146,7 @@ function getCache(debugParam = false) {
         cacheThreads = getNewLengthObj();
         repo.clear();
         // create the main thread
-        createThread(MAIN_THREAD_ID);
+        //createThread(MAIN_THREAD_ID);
         nextStackKey = 0;
     };
 
@@ -221,24 +221,23 @@ function getCache(debugParam = false) {
                     obj.length += 1;
                     return true;
                 }
-                return false;
             },
             enumerable: false,
             writable  : false
         });
 
-        Object.defineProperty(obj, "removeThread", {
-            value     : threadId => {
-                /* istanbul ignore else */
-                if (typeof obj[threadId] !== "undefined") {
-                    obj[threadId] = undefined;
-                    //delete obj[threadId];
-                    obj.length -= 1;
-                }
-            },
-            enumerable: false,
-            writable  : false
-        });
+        //Object.defineProperty(obj, "removeThread", {
+        //    value     : threadId => {
+        //        /* istanbul ignore else */
+        //        if (typeof obj[threadId] !== "undefined") {
+        //            obj[threadId] = undefined;
+        //            //delete obj[threadId];
+        //            obj.length -= 1;
+        //        }
+        //    },
+        //    enumerable: false,
+        //    writable  : false
+        //});
         return obj;
     }
 
@@ -278,12 +277,10 @@ function getCache(debugParam = false) {
 
         threadIds = getThreadIds(threadIds, true);
 
-
-
         // always add to main
-        if (threadIds.indexOf(MAIN_THREAD_ID) < 0) {
-            threadIds.unshift(MAIN_THREAD_ID);
-        }
+        //if (threadIds.indexOf(MAIN_THREAD_ID) < 0) {
+        //    threadIds.unshift(MAIN_THREAD_ID);
+        //}
 
         // TODO ****** freeze arrays on put
         // only mergeThread entities with uid
@@ -318,9 +315,12 @@ function getCache(debugParam = false) {
     // THREAD
 
     const ensureThreadValid = threadId => {
+        if (!isString(threadId)) {
+            throw new TypeError("[One] Only string thread ids are allowed. ThreadId:" + threadId);
+        }
         let threadIndex = allowedThreads.indexOf(threadId);
-        if(threadIndex < 0){
-            throw new TypeError("This thread id is not allowed for use at the moment. ThreadId: " + threadId + " allowed:" + allowedThreads.join(" "));
+        if (threadIndex < 0) {
+            throw new TypeError("[One] This thread id is not allowed for use at the moment. ThreadId:" + threadId + ", allowed:" + allowedThreads.join(" "));
         }
     };
 
@@ -335,29 +335,30 @@ function getCache(debugParam = false) {
         let validate = withCreate === true;
         if (isArray(threadId)) {
             if (validate) {
-                threadId.forEach((thdId) => {
-                    ensureThreadValid(threadId);
+                threadId.forEach(thdId => {
+                    ensureThreadValid(thdId);
                     createThread(thdId);
                 });
             }
             threadIds = threadId;
-        } else if (typeof threadId === "string") {
-            ensureThreadValid(threadId);
-            if (validate) {
-                createThread(threadId);
-            }
-            threadIds = [threadId];
-        } else if (typeof threadId === "number") {
-            threadId = String(threadId);
-            ensureThreadValid(threadId);
-            /* istanbul ignore else */
-            if (validate) {
-                createThread(threadId);
-            }
-            threadIds = [threadId];
         } else {
-            throw new TypeError("Thread id must be one of 'string', 'number' or an array of strings or numbers");
+            ensureThreadValid(threadId);
+            if (validate) {
+                createThread(threadId);
+            }
+            threadIds = [threadId];
         }
+        //else if (typeof threadId === "number") {
+        //    threadId = String(threadId);
+        //    ensureThreadValid(threadId);
+        //    /* istanbul ignore else */
+        //    if (validate) {
+        //        createThread(threadId);
+        //    }
+        //    threadIds = [threadId];
+        //} else {
+        //    throw new TypeError("Thread id must be one of 'string', 'number' or an array of strings or numbers");
+        //}
         return threadIds;
     };
 
@@ -367,9 +368,9 @@ function getCache(debugParam = false) {
      * @param {string} threadId currently ignored - only one slice
      * @param {string} targetThreadId optional - id of thread to assign closed remaining nodes to
      */
-    const closeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
-        return commitThread(threadId, true, targetThreadId);
-    };
+    //const closeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
+    //    return commitThread(threadId, true, targetThreadId);
+    //};
 
     /**
      * Closes a slice without removing the intermediary nodes between the open and last active node. It removes the
@@ -378,9 +379,9 @@ function getCache(debugParam = false) {
      * @param {string} threadId currently ignored - only one slice
      * @param {string} targetThreadId optional - id of thread to assign merged nodes
      */
-    const mergeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
-        return commitThread(threadId, false, targetThreadId);
-    };
+    //const mergeThread = (threadId, targetThreadId = MAIN_THREAD_ID) => {
+    //    return commitThread(threadId, false, targetThreadId);
+    //};
 
     /**
      * Revert the state where the gap started. Equivalent of a cancel operation. Remove all nodes that are only on the
@@ -389,35 +390,35 @@ function getCache(debugParam = false) {
      * @param threadId the id of the thread to be cancelled
      * @returns {{hasPrev, hasNext, hasThread, prevStreamIndex, nextStreamIndex, currentIndex, length, threadId}|{}}
      */
-    const cutThread = (threadId) => {
-        if (threadId === MAIN_THREAD_ID) {
-            throw new TypeError("You may not cancel the main thread. Pfft.");
-        }
-        if (typeof threadId === "undefined") {
-            return getHistoryState(false);
-        }
-        let thread = cacheThreads[threadId];
-        if (!thread) {
-            return getHistoryState(false);
-        }
-
-        let stack            = thread.nodes;
-        let removedMainNodes = [];
-        stack.forEach(nodeId => {
-            let item = repo.get(nodeId);
-            if (item) {
-                // remove thread from all items
-                item.threads.removeThread(threadId);
-                // ****** KEEP OTHER THREAD NODES
-                if (item.threads.length <= 1) {
-                    removedMainNodes.push(nodeId);
-                }
-            }
-        });
-        removeNodes(removedMainNodes);
-        cacheThreads.removeThread(threadId);
-        return getHistoryState(true);
-    };
+    //const cutThread = (threadId) => {
+    //    if (threadId === MAIN_THREAD_ID) {
+    //        throw new TypeError("You may not cancel the main thread. Pfft.");
+    //    }
+    //    if (typeof threadId === "undefined") {
+    //        return getHistoryState(false);
+    //    }
+    //    let thread = cacheThreads[threadId];
+    //    if (!thread) {
+    //        return getHistoryState(false);
+    //    }
+    //
+    //    let stack            = thread.nodes;
+    //    let removedMainNodes = [];
+    //    stack.forEach(nodeId => {
+    //        let item = repo.get(nodeId);
+    //        if (item) {
+    //            // remove thread from all items
+    //            item.threads.removeThread(threadId);
+    //            // ****** KEEP OTHER THREAD NODES
+    //            if (item.threads.length <= 1) {
+    //                removedMainNodes.push(nodeId);
+    //            }
+    //        }
+    //    });
+    //    removeNodes(removedMainNodes);
+    //    cacheThreads.removeThread(threadId);
+    //    return getHistoryState(true);
+    //};
 
     /**
      * Closes the opened gap and removes the intermediary states that are not needed any longer
@@ -426,80 +427,48 @@ function getCache(debugParam = false) {
      *     of save/cancel operation points)
      * @param {string} targetThreadId optional - id of thread to assign commited nodes
      */
-    const commitThread = (threadId, clean = true, targetThreadId = MAIN_THREAD_ID) => {
-        if (typeof threadId === "undefined") {
-            throw new TypeError("Cannot commit thread. Missing treadId");
-        }
-        if (threadId === MAIN_THREAD_ID) {
-            throw new TypeError("You may not remove the main thread");
-        }
-
-        // let's make sure we have a thread
-        let thread = cacheThreads[threadId];
-        if (!thread) {
-            return;
-        }
-
-        let threadLastIndex    = length(threadId) - 1;
-        let threadCurrentIndex = thread.current;
-
-        /* commit the thread - keep start index to current index. all else (ie nodes after current index) are removoved*/
-        if (threadCurrentIndex >= 0) {
-            let removedMainNodes = [];
-
-            if (clean === true) {
-                thread.nodes = thread.nodes.reduce((acc, nodeId, index) => {
-                    let item = getRepoNode(nodeId);
-                    if (index == 0 || index == threadCurrentIndex) {
-                        // keep
-                        item.threads.removeThread(threadId);
-                        addThreadNode(item, targetThreadId);
-                        acc.push(nodeId);
-                    } else {
-                        // count the nodes that were removed whithin the gap range
-                        if (index <= threadLastIndex) {
-                            item.threads.removeThread(threadId);
-                            // check if the node is on another threads
-                            if (item.threads.length <= 1) {
-                                removedMainNodes.push(nodeId);
-                            }
-                        }
-                    }
-                    return acc;
-                }, []);
-            } else {
-                // merge
-                thread.nodes.forEach((nodeId, index) => {
-                    let item = repo.get(nodeId);
-                    if (item) {
-                        item.threads.removeThread(threadId);
-                        if (index <= threadCurrentIndex) {
-                            addThreadNode(item, targetThreadId);
-                        } else if (item.threads.length <= 1) {
-                            removedMainNodes.push(nodeId);
-                        }
-                    }
-                });
-            }
-            removeNodes(removedMainNodes);
-            cacheThreads.removeThread(threadId);
-            return getHistoryState(true);
-        }
-    };
+    //const commitThread = (threadId, clean = true, targetThreadId = MAIN_THREAD_ID) => {
+    //    if (typeof threadId === "undefined") {
+    //        throw new TypeError("Cannot commit thread. Missing treadId");
+    //    }
+    //    if (threadId === MAIN_THREAD_ID) {
+    //        throw new TypeError("You may not remove the main thread");
+    //    }
+    //
+    //    // let's make sure we have a thread
+    //    let thread = cacheThreads[threadId];
+    //    if (!thread) {
+    //        return;
+    //    }
+    //
+    //    let threadLastIndex    = length(threadId) - 1;
+    //    let threadCurrentIndex = thread.current;
+    //
+    //    /* commit the thread - keep start index to current index. all else (ie nodes after current index) are
+    // removoved*/ if (threadCurrentIndex >= 0) { let removedMainNodes = [];  if (clean === true) { thread.nodes =
+    // thread.nodes.reduce((acc, nodeId, index) => { let item = getRepoNode(nodeId); if (index == 0 || index ==
+    // threadCurrentIndex) { // keep item.threads.removeThread(threadId); addThreadNode(item, targetThreadId);
+    // acc.push(nodeId); } else { // count the nodes that were removed whithin the gap range if (index <=
+    // threadLastIndex) { item.threads.removeThread(threadId); // check if the node is on another threads if
+    // (item.threads.length <= 1) { removedMainNodes.push(nodeId); } } } return acc; }, []); } else { // merge
+    // thread.nodes.forEach((nodeId, index) => { let item = repo.get(nodeId); if (item) {
+    // item.threads.removeThread(threadId); if (index <= threadCurrentIndex) { addThreadNode(item, targetThreadId); }
+    // else if (item.threads.length <= 1) { removedMainNodes.push(nodeId); } } }); } removeNodes(removedMainNodes);
+    // cacheThreads.removeThread(threadId); return getHistoryState(true); } };
 
     /**
      * @param nodeIdArray array of ids of all cacheNodes that should be removed from the nodes and main thread
      */
-    const removeNodes = nodeIdArray => {
-        // TODO chunk the id array into consecutive nodes by id
-        let mainThread = cacheThreads[MAIN_THREAD_ID];
-        nodeIdArray.forEach(nodeId => {
-            let index = binaryIndexOf(mainThread.nodes, nodeId);
-            mainThread.nodes.splice(index, 1);
-            repo.delete(nodeId);
-            mainThread.current -= 1;
-        });
-    };
+    //const removeNodes = nodeIdArray => {
+    //    // TODO chunk the id array into consecutive nodes by id
+    //    let mainThread = cacheThreads[MAIN_THREAD_ID];
+    //    nodeIdArray.forEach(nodeId => {
+    //        let index = binaryIndexOf(mainThread.nodes, nodeId);
+    //        mainThread.nodes.splice(index, 1);
+    //        repo.delete(nodeId);
+    //        mainThread.current -= 1;
+    //    });
+    //};
 
     /**
      * Performs a binary search on the array argument O(log(n)). Use to search for item in the main stack which is
@@ -511,67 +480,67 @@ function getCache(debugParam = false) {
      *
      * http://oli.me.uk/2013/06/08/searching-javascript-arrays-with-a-binary-search/
      */
-    function binaryIndexOf(array, searchElement) {
-        var minIndex = 0;
-        var maxIndex = array.length - 1;
-        var currentIndex;
-        var currentElement;
+    //function binaryIndexOf(array, searchElement) {
+    //    var minIndex = 0;
+    //    var maxIndex = array.length - 1;
+    //    var currentIndex;
+    //    var currentElement;
+    //
+    //    while (minIndex <= maxIndex) {
+    //        currentIndex   = (minIndex + maxIndex) / 2 | 0;
+    //        currentElement = array[currentIndex];
+    //
+    //        if (currentElement < searchElement) {
+    //            minIndex = currentIndex + 1;
+    //        }
+    //        else if (currentElement > searchElement) {
+    //            maxIndex = currentIndex - 1;
+    //        }
+    //        else {
+    //            return currentIndex;
+    //        }
+    //    }
+    //
+    //    return -1;
+    //}
 
-        while (minIndex <= maxIndex) {
-            currentIndex   = (minIndex + maxIndex) / 2 | 0;
-            currentElement = array[currentIndex];
+    ///**
+    // * Checks whether the current cache node is whithin the boundaries of a specific stream (stream can be undone from
+    // * current position)
+    // * @param threadId
+    // * @returns {boolean}
+    // */
+    //const onThread = threadId => {
+    //    let thread = cacheThreads[threadId];
+    //    if (!thread) {
+    //        return false;
+    //    }
+    //    // get the current cache node from the main thread
+    //    let currentNode = getCurrentThreadNode(MAIN_THREAD_ID);
+    //    return thread && isThreadNode(threadId, currentNode);
+    //};
 
-            if (currentElement < searchElement) {
-                minIndex = currentIndex + 1;
-            }
-            else if (currentElement > searchElement) {
-                maxIndex = currentIndex - 1;
-            }
-            else {
-                return currentIndex;
-            }
-        }
+    //const listThreads = () => {
+    //    let result = [];
+    //    for (let prop in cacheThreads) {
+    //        // check for value not undefined since when removing threads not using "delete" but setting the value to
+    //        // undefined - the key will still be there but better performance if re-using the thread with same id
+    //        if (cacheThreads.hasOwnProperty(prop) && cacheThreads[prop]) {
+    //            result.push(prop);
+    //        }
+    //    }
+    //    return result;
+    //};
 
-        return -1;
-    }
-
-    /**
-     * Checks whether the current cache node is whithin the boundaries of a specific stream (stream can be undone from
-     * current position)
-     * @param threadId
-     * @returns {boolean}
-     */
-    const onThread = threadId => {
-        let thread = cacheThreads[threadId];
-        if (!thread) {
-            return false;
-        }
-        // get the current cache node from the main thread
-        let currentNode = getCurrentThreadNode(MAIN_THREAD_ID);
-        return thread && isThreadNode(threadId, currentNode);
-    };
-
-    const listThreads = () => {
-        let result = [];
-        for (let prop in cacheThreads) {
-            // check for value not undefined since when removing threads not using "delete" but setting the value to
-            // undefined - the key will still be there but better performance if re-using the thread with same id
-            if (cacheThreads.hasOwnProperty(prop) && cacheThreads[prop]) {
-                result.push(prop);
-            }
-        }
-        return result;
-    };
-
-    /**
-     * Whether the current node is on the stream requested by threadId.
-     * @param threadId
-     * @param cacheNode the actual node that is being checked for inclusion in the thread
-     * @returns {boolean}
-     */
-    const isThreadNode = (threadId, cacheNode) => {
-        return cacheNode.threads && cacheNode.threads[threadId] !== undefined;
-    };
+    ///**
+    // * Whether the current node is on the stream requested by threadId.
+    // * @param threadId
+    // * @param cacheNode the actual node that is being checked for inclusion in the thread
+    // * @returns {boolean}
+    // */
+    //const isThreadNode = (threadId, cacheNode) => {
+    //    return cacheNode.threads && cacheNode.threads[threadId] !== undefined;
+    //};
 
     /**
      * **** QUEUING DOES NOT UPDATE THE CACHE on commit IF THE ENTITY ALREADY EXISTS - instead it uses the entity
@@ -1488,18 +1457,26 @@ function getCache(debugParam = false) {
         return getEditableObject(uidOrEntityOrArray, threadId);
     };
 
+    ///**
+    // * Useful if wanting to limit time travel between specific nodes indices.
+    // * @returns {number} the current index in the nodes order.
+    // */
+    //const getCurrentIndex = threadId => {
+    //    if (typeof threadId === "undefined") {
+    //        threadId = MAIN_THREAD_ID;
+    //    }
+    //    if (!hasThread(threadId)) {
+    //        return -1;
+    //    }
+    //    return cacheThreads[threadId].current;
+    //};
+
     /**
      * Useful if wanting to limit time travel between specific nodes indices.
      * @returns {number} the current index in the nodes order.
      */
-    const getCurrentIndex = threadId => {
-        if (typeof threadId === "undefined") {
-            threadId = MAIN_THREAD_ID;
-        }
-        if (!hasThread(threadId)) {
-            return -1;
-        }
-        return cacheThreads[threadId].current;
+    const getCurrentIndex = () => {
+        return cacheThreads[MAIN_THREAD_ID].current;
     };
 
     /**
@@ -1634,11 +1611,11 @@ function getCache(debugParam = false) {
         result.success = success;
 
         let threadIds;
-        if (threadId === undefined || threadId === MAIN_THREAD_ID) {
-            threadIds = listThreads();
-        } else {
-            threadIds = [MAIN_THREAD_ID, threadId];
-        }
+        //if (threadId === undefined || threadId === MAIN_THREAD_ID) {
+        //    threadIds = listThreads();
+        //} else {
+        threadIds = [MAIN_THREAD_ID, threadId];
+        // }
 
         threadIds.forEach(thId => {
             setThreadState(result, thId);
@@ -1675,17 +1652,26 @@ function getCache(debugParam = false) {
         return thread ? thread.current > 0 : false;
     };
 
+    ///**
+    // * Number of entities currently stored in the cache.
+    // * @returns {*}
+    // */
+    //const size = (threadId = MAIN_THREAD_ID) => {
+    //    let thread = cacheThreads[threadId];
+    //    if (thread) {
+    //        let cacheNode = getCurrentThreadNode(threadId);
+    //        return cacheNode ? cacheNode.items.size : 0;
+    //    }
+    //    return 0;
+    //};
+
     /**
      * Number of entities currently stored in the cache.
      * @returns {*}
      */
-    const size = (threadId = MAIN_THREAD_ID) => {
-        let thread = cacheThreads[threadId];
-        if (thread) {
-            let cacheNode = getCurrentThreadNode(threadId);
-            return cacheNode ? cacheNode.items.size : 0;
-        }
-        return 0;
+    const size = () => {
+        let cacheNode = getCurrentThreadNode(MAIN_THREAD_ID);
+        return cacheNode ? cacheNode.items.size : 0;
     };
 
     /**
@@ -1693,7 +1679,8 @@ function getCache(debugParam = false) {
      * @returns {Number}
      */
     const length = () => {
-        return cacheThreads[MAIN_THREAD_ID].nodes.length;
+        let mainThread = createThread(MAIN_THREAD_ID);
+        return mainThread.nodes.length;
     };
 
     const pending = () => {
@@ -1779,26 +1766,27 @@ function getCache(debugParam = false) {
             }
 
             // TODO evict all other thread items
-        } else {
-            let removeMainNodes = [];
-            // remove all nodes from current to finish if not on other threads
-            let len      = thread.nodes.length;
-            thread.nodes = thread.nodes.filter((nodeId, index) => {
-                if (index > thread.current && index < len) {
-                    let node = repo.get(nodeId);
-                    node.threads.removeThread(threadId);
-                    // on main only
-                    if (node.threads.length <= 1) {
-                        removeMainNodes.push(nodeId);
-                    }
-                    // remove from this thread either way
-                    return false;
-                } else {
-                    return true;
-                }
-            });
-            removeNodes(removeMainNodes);
         }
+        //else {
+        //    let removeMainNodes = [];
+        //    // remove all nodes from current to finish if not on other threads
+        //    let len      = thread.nodes.length;
+        //    thread.nodes = thread.nodes.filter((nodeId, index) => {
+        //        if (index > thread.current && index < len) {
+        //            let node = repo.get(nodeId);
+        //            node.threads.removeThread(threadId);
+        //            // on main only
+        //            if (node.threads.length <= 1) {
+        //                removeMainNodes.push(nodeId);
+        //            }
+        //            // remove from this thread either way
+        //            return false;
+        //        } else {
+        //            return true;
+        //        }
+        //    });
+        //    removeNodes(removeMainNodes);
+        //}
     };
 
     /**
@@ -1830,29 +1818,28 @@ function getCache(debugParam = false) {
                 if (cacheNode.threads === undefined) {
                     cacheNode.threads = getNewLengthObj();
                 }
-                let theThreads = collectThreads(threadIds);
-                theThreads.forEach(threadId => {
-                    addThreadNode(cacheNode, threadId);
-                });
+                // always add to main
+                addThreadNode(cacheNode, MAIN_THREAD_ID);
+                //let theThreads = collectThreads(threadIds);
+                //theThreads.forEach(threadId => {
+                //    addThreadNode(cacheNode, threadId);
+                //});
             }
         }
     };
 
-    const collectThreads = threadIds => {
-        let theThreads;
-        if (typeof threadIds === "string") {
-            theThreads = [threadIds];
-        } else if (isArray(threadIds)) {
-            theThreads = threadIds;
-        }
-        return theThreads;
-    };
+    //const collectThreads = threadIds => {
+    //    let theThreads;
+    //    if (typeof threadIds === "string") {
+    //        theThreads = [threadIds];
+    //    } else if (isArray(threadIds)) {
+    //        theThreads = threadIds;
+    //    }
+    //    return theThreads;
+    //};
 
     const addThreadNode = (cacheNode, threadId) => {
-        let thread = cacheThreads[threadId];
-        if (!thread) {
-            thread = createThread(threadId);
-        }
+        let thread = createThread(threadId);
         if (cacheNode.threads.addThread(threadId, getThreadNextIndex(threadId))) {
             thread.nodes.push(cacheNode.id);
             thread.current += 1;
@@ -1901,6 +1888,12 @@ function getCache(debugParam = false) {
         let result     = "";
         let index      = 0;
         let mainThread = cacheThreads[MAIN_THREAD_ID];
+        if(!mainThread){
+            console.log("\n------ One -------"
+            + "\n no data yet"
+            + "\n===================\n");
+            return ;
+        }
         let current    = mainThread.current;
         mainThread.nodes.map(cacheNodeId => {
             let streamData = "";
@@ -1936,12 +1929,13 @@ function getCache(debugParam = false) {
 
         arr.map(item => {
             let itemResult;
-            try {
-                itemResult = JSON.stringify(item, null, 2) + ",\n";
-            } catch (err) {
-                console.log("CYCLICAL STRUCTURE - to fix: " + err.message);
-                return;
-            }
+            // this try catch is for cyclical data testing
+            //            try {
+            itemResult = JSON.stringify(item, null, 2) + ",\n";
+            //} catch (err) {
+            //    console.log("CYCLICAL STRUCTURE - to fix: " + err.message);
+            //    return;
+            //}
 
             if (itemResult.indexOf(REF_FROM) >= 0 && item[REF_FROM]) {
                 itemResult = itemResult.replace('"' + REF_FROM + '": {}', '"' + REF_FROM + '"' + ": " + JSON.stringify([...item[REF_FROM]]));
@@ -1952,9 +1946,7 @@ function getCache(debugParam = false) {
             result += itemResult;
         });
 
-        if (result === "") {
-            result = "{}";
-        } else {
+        if (result.length > 2) {
             result = result.substring(0, result.length - 2);
         }
         return result;
@@ -2052,12 +2044,12 @@ function getCache(debugParam = false) {
         commit    : commit,
 
         // threads
-        closeThread: closeThread,
-        mergeThread: mergeThread,
-        cutThread  : cutThread,
-        hasThread  : hasThread,
-        onThread   : onThread,
-        listThreads: listThreads,
+        //closeThread: closeThread,
+        //mergeThread: mergeThread,
+        //cutThread  : cutThread,
+        //hasThread  : hasThread,
+        //onThread   : onThread,
+        //listThreads: listThreads,
 
         // time travel
         undo           : undo,

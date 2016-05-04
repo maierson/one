@@ -607,7 +607,7 @@ describe("One", function () {
                         deep: item1
                     }
                 }
-            }
+            };
             One.put(item2);
             expect(One.length()).to.equal(1);
             expect(One.size()).to.equal(2);
@@ -917,6 +917,22 @@ describe("One", function () {
             One.put(editable);
             expect(One.get(1) === item1).to.be.true;
         });
+
+        it("throws on invalid thread id string", function(){
+            expect(() => {One.put({uid:1}, "invalidThread")}).to.throw(TypeError);
+        });
+
+        it("throws on invalid thread id number", function(){
+            expect(() => {One.put({uid:1}, 3)}).to.throw(TypeError);
+        });
+
+        it("throws on invalid thread id array", function(){
+            expect(() => {One.put({uid:1}, ["invalidThread", "another"])}).to.throw(TypeError);
+        });
+
+        it("allows main thread in array", function(){
+            expect(() => {One.put({uid:1}, ["main"])}).to.not.throw(TypeError);
+        })
     });
 
     describe("queue", function () {
@@ -2066,6 +2082,10 @@ describe("One", function () {
                 One.getHistoryState(true, true)
             }).to.throw(TypeError);
         });
+
+        it("prints empty", function(){
+            expect(() => {One.print()}).to.not.throw(Error);
+        })
     });
 
     describe("dirty", function () {

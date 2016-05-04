@@ -3,6 +3,33 @@
  */
 import * as config from './config';
 
+var _hasOwnProperty = Object.prototype.hasOwnProperty;
+
+export function isNumber(value) {
+    return typeof value === 'number' || toString(value) === "[object Number]";
+}
+
+export function isString(obj) {
+    return typeof obj === 'string' || toString(obj) === "[object String]";
+}
+
+export function isEmpty(value) {
+    if (!value) {
+        return true;
+    }
+    if (isArray(value) && value.length === 0) {
+        return true;
+    } else if (!isString(value)) {
+        for (var i in value) {
+            if (_hasOwnProperty.call(value, i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 /**
  *
  * @param {Object} obj object to be cloned
