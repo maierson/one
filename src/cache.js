@@ -1300,27 +1300,27 @@ function getCache(debugParam = false) {
      *     index, or just go back one step
      * @returns {{hasPrev, hasNext, hasThread, prevStreamIndex, nextStreamIndex, currentIndex, length}|{}}
      */
-    const undo = (threadId = MAIN_THREAD_ID) => {
-        let thread  = cacheThreads[threadId];
+    const undo = () => {
+        let thread  = createThread(MAIN_THREAD_ID);
         let success = false;
-        if (thread && hasPrev(threadId)) {
+        if (thread && hasPrev(MAIN_THREAD_ID)) {
             thread.current -= 1;
             success = true;
         }
-        return getHistoryState(success, threadId);
+        return getHistoryState(success, MAIN_THREAD_ID);
     };
 
     /**
      * Selects the next version of the cache from the nodes.
      */
-    const redo = (threadId = MAIN_THREAD_ID) => {
-        let thread  = cacheThreads[threadId];
+    const redo = () => {
+        let thread  = createThread(MAIN_THREAD_ID);
         let success = false;
-        if (thread && hasNext(threadId)) {
+        if (thread && hasNext(MAIN_THREAD_ID)) {
             thread.current += 1;
             success = true;
         }
-        return getHistoryState(success, threadId);
+        return getHistoryState(success, MAIN_THREAD_ID);
     };
 
     /**
