@@ -5,34 +5,7 @@
  */
 "use strict";
 
-import {isObject, isArray} from './clone';
-
-var _hasOwnProperty = Object.prototype.hasOwnProperty;
-
-function isNumber(value) {
-    return typeof value === 'number' || toString(value) === "[object Number]";
-}
-
-function isString(obj) {
-    return typeof obj === 'string' || toString(obj) === "[object String]";
-}
-
-function isEmpty(value) {
-    if (!value) {
-        return true;
-    }
-    if (isArray(value) && value.length === 0) {
-        return true;
-    } else if (!isString(value)) {
-        for (var i in value) {
-            if (_hasOwnProperty.call(value, i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
+import {isObject, isArray, isString, isNumber, isEmpty} from './clone';
 
 function getKey(key) {
     var intKey = parseInt(key);
