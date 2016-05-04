@@ -154,13 +154,15 @@ If you were to track all instances of an entity on each update the write penalty
 This is not currently designed to work with cyclical data. It is best for non-cyclical objects received from the server in the form of json (or other non-cyclical fomats).  
 If a strong need arises for managing cyclical structures this might be an option for future development.
 
+###Release Notes
+5.1.0 remove thread api, time travel works on main thread only to prevent mixing data from different cache nodes
+
 ###Documentation
 * [Immutable data](https://maierson.gitbooks.io/one/content/immutable_data.html)
 * Api
   * [Put](https://maierson.gitbooks.io/one/content/put.html)
   * [Get](https://maierson.gitbooks.io/one/content/get.html)
   * [Evict](https://maierson.gitbooks.io/one/content/evict.html)
-* [Threads](https://maierson.gitbooks.io/one/content/threads.html)
 * [Time travel](https://maierson.gitbooks.io/one/content/time_travel.html)
 
     

@@ -280,7 +280,7 @@ function getCache(debugParam = false) {
             let success = false;
             if (flushMap.size > 0 && changed) {
                 // remove from the nodes all states coming after the current state (clears history after now)
-                clearNext(threadIds);
+                clearNext();
                 addItems([...flushMap.values()], threadIds, evictMap);
                 notify();
                 success = true;
@@ -456,9 +456,9 @@ function getCache(debugParam = false) {
      * when checking for isDirty()
      *
      * @param uidOrEntityOrArray
-     * @param threadId optional parameter to retrieve the object on a specific thread. Defaults to main
      */
-    const get = (uidOrEntityOrArray, threadId = MAIN_THREAD_ID) => {
+    const get = uidOrEntityOrArray => {
+        let threadId = MAIN_THREAD_ID;
         if (!uidOrEntityOrArray) {
             throw new TypeError("Cache-uid get(): requires a uid to retrieve an item from the cache.");
         }
@@ -469,7 +469,7 @@ function getCache(debugParam = false) {
                 return item !== null && item !== undefined;
             })
         }
-        return getObject(uidOrEntityOrArray, threadId);
+        return getObject(uidOrEntityOrArray);
     };
 
     /**
@@ -916,8 +916,6 @@ function getCache(debugParam = false) {
      * @param refUid
      */
     const clearRefTo = (parentItem, refUid) => {
-        let refTo = parentItem[REF_TO][refUid];
-
         // first remove all instances of entity from the parent
         let parent = parentItem[ENTITY];
         if (Object.isFrozen(parent)) {
@@ -1155,13 +1153,13 @@ function getCache(debugParam = false) {
      * @param {string} threadId
      * @returns {*}
      */
-    const getObject = (uidOrEntity, threadId = MAIN_THREAD_ID) => {
+    const getObject = (uidOrEntity) => {
         let realUid = getActualUid(uidOrEntity);
         if (!realUid) {
             return;
         }
 
-        let item = getLiveItem(realUid, threadId);
+        let item = getLiveItem(realUid);
         if (item === undefined) {
             // if we have it in the putQueue map return that one.
             let queued = putQueue[realUid];
@@ -1195,7 +1193,7 @@ function getCache(debugParam = false) {
      *
      * @param uidOrEntityOrArray
      */
-    const getEdit = (uidOrEntityOrArray, threadId) => {
+    const getEdit = uidOrEntityOrArray => {
         if (isArray(uidOrEntityOrArray)) {
             return uidOrEntityOrArray.map(item => {
                 return getEditableObject(item);
@@ -1203,7 +1201,7 @@ function getCache(debugParam = false) {
                 return item !== null & item !== undefined;
             })
         }
-        return getEditableObject(uidOrEntityOrArray, threadId);
+        return getEditableObject(uidOrEntityOrArray);
     };
 
     /**
@@ -1219,16 +1217,15 @@ function getCache(debugParam = false) {
      * children to not get refreshed needlessly when changing a property on the parent. Note that the children will
      * be frozen so if needing to change a child must get it editable separately.
      * @param uidOrEntity
-     * @param threadId fish out the item on the given thread id
      * @returns {*}
      */
-    const getEditableObject = (uidOrEntity, threadId = MAIN_THREAD_ID) => {
+    const getEditableObject = (uidOrEntity) => {
         let realUid = getActualUid(uidOrEntity);
         if (getQueued(realUid)) {
             return putQueue[realUid];
         }
 
-        let existing = get(realUid, threadId);
+        let existing = get(realUid);
         if (!existing) {
             return;
         }
@@ -1296,9 +1293,7 @@ function getCache(debugParam = false) {
     /**
      * Selects the previous version of the cache from the nodes.
      *
-     * @param {string|number} threadId an undo operation can be limited to a stream, go directly to a given
-     *     index, or just go back one step
-     * @returns {{hasPrev, hasNext, hasThread, prevStreamIndex, nextStreamIndex, currentIndex, length}|{}}
+     * @returns {{}}
      */
     const undo = () => {
         let thread  = createThread(MAIN_THREAD_ID);
@@ -1312,6 +1307,8 @@ function getCache(debugParam = false) {
 
     /**
      * Selects the next version of the cache from the nodes.
+     *
+     * @returns {{}}
      */
     const redo = () => {
         let thread  = createThread(MAIN_THREAD_ID);
@@ -1412,31 +1409,15 @@ function getCache(debugParam = false) {
      *
      * @param threadId
      */
-    const clearNext = (threadId = MAIN_THREAD_ID) => {
-        let threads = getThreadIds(threadId, false);
-        threads.forEach(threadId => {
-            clearThreadNext(threadId)
-        });
-    };
+    const clearNext = () => {
+        let thread = createThread(MAIN_THREAD_ID);
 
-    /**
-     * Clears all the states after the current one because of a change that was effected in the cache.
-     */
-    const clearThreadNext = (threadId = MAIN_THREAD_ID) => {
-        if (!hasNext(threadId)) {
-            return;
-        }
-
-        let thread = cacheThreads[threadId];
-        if (threadId === MAIN_THREAD_ID) {
-            // clear all nodes after this one
-
-            if (thread.current < thread.nodes.length - 1) {
-                let removedNodes = thread.nodes.slice(thread.current + 1, thread.nodes.length);
-                thread.nodes     = thread.nodes.slice(0, thread.current + 1);
-                thread.current   = thread.nodes.length - 1;
-                truncateThreads(removedNodes);
-            }
+        // clear all nodes after this one
+        if (thread.current < thread.nodes.length - 1) {
+            let removedNodes = thread.nodes.slice(thread.current + 1, thread.nodes.length);
+            thread.nodes     = thread.nodes.slice(0, thread.current + 1);
+            thread.current   = thread.nodes.length - 1;
+            truncateThreads(removedNodes);
         }
     };
 
@@ -1493,11 +1474,10 @@ function getCache(debugParam = false) {
      * Pulls an item out of the current version of the cache. Gets the actual real instance but frozen (uneditable).
      * Useful for testing.
      * @param uid
-     * @param {string} threadId
      * @returns {*}
      */
-    const getLiveItem = (uid, threadId = MAIN_THREAD_ID) => {
-        let currentNode = getCurrentThreadNode(threadId);
+    const getLiveItem = (uid) => {
+        let currentNode = getCurrentThreadNode();
         return currentNode ? currentNode.items.get(String(uid)) : undefined;
     };
 
@@ -1505,8 +1485,8 @@ function getCache(debugParam = false) {
      * @param threadId
      * @returns {undefined} the cache node that the thread is currently left pointing at.
      */
-    function getCurrentThreadNode(threadId = MAIN_THREAD_ID) {
-        let thread        = cacheThreads[threadId];
+    function getCurrentThreadNode() {
+        let thread        = cacheThreads[MAIN_THREAD_ID];
         let currentNodeId = thread ? thread.nodes[thread.current] : undefined;
         // watch out currentNodeId evaluates to false when it's 0
         return currentNodeId >= 0 ? getRepoNode(currentNodeId) : undefined;
@@ -1592,12 +1572,12 @@ function getCache(debugParam = false) {
      * @param {string} threadId id of the thread on which the entity is compared for identity
      * @returns {boolean}
      */
-    const isDirty = (uidEntity, threadId = MAIN_THREAD_ID) => {
+    const isDirty = (uidEntity) => {
         if (!hasUid(uidEntity)) {
             return true;
         }
         let uid      = uidEntity[config.prop.uidName];
-        let existing = get(uid, threadId);
+        let existing = get(uid);
         if (!existing) {
             return true;
         }
