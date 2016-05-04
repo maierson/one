@@ -102,6 +102,7 @@ function getCache(debugParam = false) {
     "use strict";
 
     const MAIN_THREAD_ID = "main";
+    const allowedThreads = [MAIN_THREAD_ID];
 
     /**
      * Increment this key every time a new node is assigned.
@@ -123,17 +124,17 @@ function getCache(debugParam = false) {
     let cacheThreads = getNewLengthObj();
 
     /**
-     * List of listeners to be notified of cache changes.
-     * @type {Array}
-     */
-    let listeners = [];
-
-    /**
      * Queue of entities that are awaiting to be put on the cache. Use for fast access when speed of updating UI is
      * critical. Call commit to put into the cache.
      */
     let putQueue   = getNewLengthObj();
     let evictQueue = getNewLengthObj();
+
+    /**
+     * List of listeners to be notified of cache changes.
+     * @type {Array}
+     */
+    let listeners = [];
 
     // PUBLIC
     /**
@@ -161,8 +162,8 @@ function getCache(debugParam = false) {
     }
 
     /**
-     * Puts a marker at the current index in order to remove any potential future states between now and closeGap()
-     * call.
+     * Creates a new thread. Idempotent: if thread exists returns existing thread.
+     *
      * @param threadId the id that the thread should have
      * @returns {*} the newly created thread
      */
@@ -190,6 +191,8 @@ function getCache(debugParam = false) {
     }
 
     /**
+     * Creates a new cache node and adds it to the repo.
+     *
      * @returns {*} a newly created cache node after adding it to the repo.
      */
     function getNewCacheNode() {
@@ -261,8 +264,6 @@ function getCache(debugParam = false) {
         config.config(conf);
     };
 
-    // EDIT - API
-
     // PUT
 
     /**
@@ -276,6 +277,8 @@ function getCache(debugParam = false) {
         // force a thread id
 
         threadIds = getThreadIds(threadIds, true);
+
+
 
         // always add to main
         if (threadIds.indexOf(MAIN_THREAD_ID) < 0) {
@@ -314,6 +317,13 @@ function getCache(debugParam = false) {
 
     // THREAD
 
+    const ensureThreadValid = threadId => {
+        let threadIndex = allowedThreads.indexOf(threadId);
+        if(threadIndex < 0){
+            throw new TypeError("This thread id is not allowed for use at the moment. ThreadId: " + threadId + " allowed:" + allowedThreads.join(" "));
+        }
+    };
+
     /**
      *
      * @param threadId
@@ -326,17 +336,20 @@ function getCache(debugParam = false) {
         if (isArray(threadId)) {
             if (validate) {
                 threadId.forEach((thdId) => {
+                    ensureThreadValid(threadId);
                     createThread(thdId);
                 });
             }
             threadIds = threadId;
         } else if (typeof threadId === "string") {
+            ensureThreadValid(threadId);
             if (validate) {
                 createThread(threadId);
             }
             threadIds = [threadId];
         } else if (typeof threadId === "number") {
             threadId = String(threadId);
+            ensureThreadValid(threadId);
             /* istanbul ignore else */
             if (validate) {
                 createThread(threadId);
@@ -1679,11 +1692,8 @@ function getCache(debugParam = false) {
      * Number of current cache versions stored in the history nodes.
      * @returns {Number}
      */
-    const length = (threadId = MAIN_THREAD_ID) => {
-        if (hasThread(threadId)) {
-            return cacheThreads[threadId].nodes.length;
-        }
-        return 0;
+    const length = () => {
+        return cacheThreads[MAIN_THREAD_ID].nodes.length;
     };
 
     const pending = () => {
@@ -1798,7 +1808,7 @@ function getCache(debugParam = false) {
     const truncateThreads = removedNodes => {
         removedNodes.forEach(cacheNodeId => {
             let cacheNode = repo.get(cacheNodeId);
-            if(cacheNode){
+            if (cacheNode) {
                 repo.delete(cacheNodeId);
             }
         });
