@@ -1,6 +1,6 @@
 "use strict";
 
-import {isObject, isArray, hasUid, cloneSet, deepClone, isString} from './utils/clone';
+import {isObject, isArray, hasUid, cloneSet, deepClone, isString, isNumber} from './utils/clone';
 import deepFreeze from './utils/deepFreeze';
 import * as config from './utils/config';
 import * as opath from './utils/path';
@@ -95,7 +95,7 @@ export default function createCache(debug = true, libName = "One") {
  * @returns {{put: put, get: get, getEdit: getEdit, evict: evict, reset: reset, queue: queue, unQueue: unqueue,
  *     queueEvict: queueEvict, getQueued: getQueued, commit: commit, closeThread: closeThread, mergeThread:
  *     mergeThread, cutThread: cutThread, hasThread: hasThread, onThread: onThread, listThreads: listThreads, undo:
- *     undo, redo: redo, getHistoryState: getHistoryState, getCurrentIndex: getCurrentIndex, isDirty: isDirty,
+ *     undo, redo: redo, getHistoryState: getHistoryState, getCurrentIndex: index, isDirty: isDirty,
  *     createUid: createUUid, contains: contains, config: setConfig, subscribe: subscribe}}
  */
 function getCache(debugParam = false) {
@@ -1205,11 +1205,23 @@ function getCache(debugParam = false) {
     };
 
     /**
-     * Useful if wanting to limit time travel between specific nodes indices.
+     * Gets or set the current index of the cache. If no value is provided it returns the current index. If a value is
+     * provided it sets the current index to the given value if it is an integer within the cache's length.
+     *
+     * * @param idx
      * @returns {number} the current index in the nodes order.
      */
-    const getCurrentIndex = () => {
-        return cacheThreads[MAIN_THREAD_ID].current;
+    const index = idx => {
+        if(!idx){
+            return cacheThreads[MAIN_THREAD_ID].current;
+        } else if(isNumber(idx)) {
+            if(idx >= 0 && idx < length()){
+                cacheThreads[MAIN_THREAD_ID].current = idx;
+            } else {
+                throw new TypeError("Index out of bounds");
+            }
+        }
+        // for non numbers just fail silently
     };
 
     /**
@@ -1350,7 +1362,7 @@ function getCache(debugParam = false) {
 
     const setThreadState = (result, threadId) => {
         if (cacheThreads[threadId]) {
-            let currentIndex         = getCurrentIndex(threadId);
+            let currentIndex         = index();
             let lgth                 = length(threadId);
             result.threads[threadId] = {
                 currentIndex: currentIndex,
@@ -1658,10 +1670,10 @@ function getCache(debugParam = false) {
         // time travel
         undo           : undo,
         redo           : redo,
+        index          : index,
         getHistoryState: getHistoryState,
 
         // utils
-        getCurrentIndex: getCurrentIndex,
         isDirty        : isDirty,
         uuid           : createUUid,
         contains       : contains,
@@ -1670,16 +1682,10 @@ function getCache(debugParam = false) {
     };
 
     if (debugParam === true) {
-        //base.append   = append;
-
         base.getCurrentNode = getCurrentThreadNode;
 
         base.refFrom = refFrom;
         base.refTo   = refTo;
-
-        // time travel
-        // base.hasNext     = hasNext;
-        // base.hasPrevious = hasPrev;
 
         // dimensions
         base.size = size; // number of items in the current state

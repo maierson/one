@@ -59,42 +59,6 @@ describe("One", function () {
             expect(One.length()).to.equal(0);
         });
 
-        it("undoes correctly", function () {
-            let item1 = {uid: 1, text: "text"};
-            One.put(item1); // main 0
-            let item2 = {uid: 2};
-            One.put(item2); // main 1
-            expect(One.size()).to.equal(2);
-            expect(One.length()).to.equal(2);
-
-            One.undo(); // main 0
-
-            expect(One.size()).to.equal(1);
-
-            let state    = One.getHistoryState();
-            let mainData = state.threads["main"];
-            expect(mainData).to.not.be.undefined;
-            expect(mainData.currentIndex).to.equal(0);
-            expect(mainData.length).to.equal(2);
-            expect(One.get(1)).to.not.be.undefined;
-            expect(One.get(1).text).to.equal("text");
-        });
-
-        it("re-does correctly", function () {
-            let item1 = {uid: 1};
-            One.put(item1);
-            let item2 = {uid: 2};
-            One.put(item2);
-            expect(One.size()).to.equal(2);
-            expect(One.length()).to.equal(2);
-            One.undo();
-            One.redo();
-            expect(One.size()).to.equal(2);
-            let mainData = One.getHistoryState().threads["main"];
-            expect(mainData.currentIndex == (mainData.length - 1)).to.be.true;
-            expect(mainData.currentIndex > 0).to.be.true;
-        });
-
         it("puts frozen object", function () {
             let item1 = {uid: 1};
             let item2 = {uid: "2", item: item1, otherItem: undefined};

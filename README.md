@@ -155,7 +155,10 @@ This is not currently designed to work with cyclical data. It is best for non-cy
 If a strong need arises for managing cyclical structures this might be an option for future development.
 
 ###Release Notes
-5.1.0 remove thread api, time travel works on main thread only to prevent mixing data from different cache nodes
+5.1.0 
+* remove thread api, time travel works on main thread only to prevent mixing data from different cache nodes
+* ```getCurrentIndex()``` change to ```index()``` with dual nature to get or set the current index. 
+Replaces the threading option in a much simpler and intuitive manner since threads were only a way of jumping around in time on the cache.
 
 ###Documentation
 * [Immutable data](https://maierson.gitbooks.io/one/content/immutable_data.html)
