@@ -48,9 +48,11 @@ describe("One", function () {
             One.commit();
 
             expect(One.size()).to.equal(1);
+            expect(One.length()).to.equal(1);
 
             One.reset();
             expect(One.size()).to.equal(0);
+            expect(One.length()).to.equal(0);
         });
 
         it("initializes with no map", function () {
@@ -337,18 +339,13 @@ describe("One", function () {
             One.put(item2);
 
             let state  = One.undo();
-            let mainTh = state.threads.main;
-            expect(mainTh.currentIndex < mainTh.length - 1).to.be.true;
-            expect(mainTh.length).to.equal(2);
             expect(state.success).to.be.true;
+            expect(state.hasPrev).to.be.false;
+            expect(state.hasNext).to.be.true;
 
             item1      = One.getEdit(1);
             item1.text = "text";
             state      = One.put(item1);
-            mainTh     = state.threads.main;
-
-            expect(mainTh.currentIndex < mainTh.length - 1).to.be.false;
-            expect(mainTh.length).to.equal(2);
             expect(One.get(1).text).to.equal("text");
         });
 
@@ -484,16 +481,15 @@ describe("One", function () {
             // with undo we are at the beginning of the nodes array
             One.put({uid: 100});
             let state = One.undo();
-            let main  = state.threads.main;
 
             expect(state.success).to.be.true;
-            expect(main.current > 0).to.be.false;
+            expect(state.index).to.equal(0);
+
             // also going forward also puts us at the other end
-            let redo = One.redo();
-            main     = redo.threads.main;
+            state = One.redo();
             // since we're already on the last redo (undo didn't move it as it doesn't read the first item in the nodes)
-            expect(redo.success).to.be.true;
-            expect(main.current > main.length - 1).to.be.false;
+            expect(state.success).to.be.true;
+            expect(state.hasNext).to.be.false;
         });
 
         it("updates all pointing parents when putting nested entity", function () {
@@ -882,21 +878,21 @@ describe("One", function () {
             expect(One.get(1) === item1).to.be.true;
         });
 
-        it("throws on invalid thread id string", function(){
-            expect(() => {One.put({uid:1}, "invalidThread")}).to.throw(TypeError);
-        });
-
-        it("throws on invalid thread id number", function(){
-            expect(() => {One.put({uid:1}, 3)}).to.throw(TypeError);
-        });
-
-        it("throws on invalid thread id array", function(){
-            expect(() => {One.put({uid:1}, ["invalidThread", "another"])}).to.throw(TypeError);
-        });
-
-        it("allows main thread in array", function(){
-            expect(() => {One.put({uid:1}, ["main"])}).to.not.throw(TypeError);
-        })
+        //it("throws on invalid thread id string", function(){
+        //    expect(() => {One.put({uid:1}, "invalidThread")}).to.throw(TypeError);
+        //});
+        //
+        //it("throws on invalid thread id number", function(){
+        //    expect(() => {One.put({uid:1}, 3)}).to.throw(TypeError);
+        //});
+        //
+        //it("throws on invalid thread id array", function(){
+        //    expect(() => {One.put({uid:1}, ["invalidThread", "another"])}).to.throw(TypeError);
+        //});
+        //
+        //it("allows main thread in array", function(){
+        //    expect(() => {One.put({uid:1}, ["main"])}).to.not.throw(TypeError);
+        //})
     });
 
     describe("queue", function () {
@@ -1776,12 +1772,12 @@ describe("One", function () {
             let item2 = {uid: 2};
             One.put(item2);
             let state = One.undo();
-            expect(state.threads.main.hasNext).to.be.true;
+            expect(state.hasNext).to.be.true;
             state = One.put({uid: 1, text: "text"});
-            expect(state.threads.main.hasNext).to.be.false;
+            expect(state.hasNext).to.be.false;
             let result = One.get(1);
             expect(result.text).to.equal("text");
-        })
+        });
 
         it("removes subsequent states when evicting", function () {
             let item1 = {uid: 1};
@@ -1979,15 +1975,10 @@ describe("One", function () {
 
     describe("print", function () {
         it("prints", function () {
-            One.put({uid: 1});
+            One.put({uid: 1, text:"test"});
+            expect(One.get(1)).to.not.be.undefined;
+            expect(One.get(1).text).to.equal("test");
             expect(One.print()).to.be.undefined;
-        });
-
-        it("throws error on getHistoryState invalid param", function () {
-            One.put({uid: 1});
-            expect(() => {
-                One.getHistoryState(true, true)
-            }).to.throw(TypeError);
         });
 
         it("prints empty", function(){

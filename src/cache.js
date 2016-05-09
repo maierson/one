@@ -93,16 +93,17 @@ export default function createCache(debug = true, libName = "One") {
  *
  * @param debugParam
  * @returns {{put: put, get: get, getEdit: getEdit, evict: evict, reset: reset, queue: queue, unQueue: unqueue,
- *     queueEvict: queueEvict, getQueued: getQueued, commit: commit, closeThread: closeThread, mergeThread:
- *     mergeThread, cutThread: cutThread, hasThread: hasThread, onThread: onThread, listThreads: listThreads, undo:
- *     undo, redo: redo, getHistoryState: getHistoryState, getCurrentIndex: index, isDirty: isDirty,
- *     createUid: createUUid, contains: contains, config: setConfig, subscribe: subscribe}}
+ *     queueEvict: queueEvict, getQueued: getQueued, commit: commit, undo: undo, redo: redo, index: index, node: node,
+ *     getHistoryState: getHistoryState, isDirty: isDirty, uuid: createUUid, contains: contains, config: setConfig,
+ *     subscribe: subscribe}}
  */
 function getCache(debugParam = false) {
     "use strict";
 
-    const MAIN_THREAD_ID = "main";
-    const allowedThreads = [MAIN_THREAD_ID];
+    /**
+     * Contains all the information required to sequentially keep track of cache nodes.
+     */
+    let mainThread;
 
     /**
      * Increment this key every time a new node is assigned.
@@ -116,12 +117,6 @@ function getCache(debugParam = false) {
      * @type {Map}
      */
     const repo = new Map();
-
-    /**
-     * Map of all currently existing threads and their start index.
-     * @type {{}}
-     */
-    let cacheThreads = getNewLengthObj();
 
     /**
      * Queue of entities that are awaiting to be put on the cache. Use for fast access when speed of updating UI is
@@ -142,52 +137,32 @@ function getCache(debugParam = false) {
      */
     const reset = () => {
         // TODO - should commit or warn before clearing the putQueue ?
-        putQueue     = getNewLengthObj();
-        cacheThreads = getNewLengthObj();
+        putQueue = getNewLengthObj();
         repo.clear();
-        // create the main thread
-        //createThread(MAIN_THREAD_ID);
+        mainThread  = undefined;
+        mainThread  = createThread();
         nextNodeKey = 0;
     };
 
     reset();
 
     /**
-     * Checks whether there is a thread open for processing
-     * @param threadId id of the thread checked for existence
-     * @returns {boolean} whether the thread was found
-     */
-    function hasThread(threadId) {
-        return cacheThreads[threadId] != undefined;
-    }
-
-    /**
      * Creates a new thread. Idempotent: if thread exists returns existing thread.
      *
-     * @param threadId the id that the thread should have
      * @returns {*} the newly created thread
      */
     /* hoisted for reset - keep as function def*/
-    function createThread(threadId) {
-        if (hasThread(threadId)) {
-            return cacheThreads[threadId];
+    function createThread() {
+        if (!mainThread) {
+            mainThread = getNewLengthObj();
+
+            // the thread's current position
+            mainThread.current = -1;
+
+            // collection of nodeIds referenced by the thread
+            mainThread.nodes = [];
         }
-        let thread             = getNewThread(threadId);
-        cacheThreads[threadId] = thread;
-        return thread;
-    }
-
-    function getNewThread(threadId) {
-        // must track the length of a thread
-        let thread = getNewLengthObj();
-        thread.id  = threadId;
-
-        // the thread's current position
-        thread.current = -1;
-
-        // collection of nodeIds referenced by the thread
-        thread.nodes = [];
-        return thread;
+        return mainThread;
     }
 
     /**
@@ -213,32 +188,8 @@ function getCache(debugParam = false) {
             writable  : true
         });
 
-        Object.defineProperty(obj, "addThread", {
-            value     : (threadId, value) => {
-                // only add if new
-                if (!obj[threadId]) {
-                    obj[threadId] = value;
-                    obj.length += 1;
-                    return true;
-                }
-            },
-            enumerable: false,
-            writable  : false
-        });
-
         return obj;
     }
-
-    /**
-     * @param threadId
-     * @returns {number} the next node index available on the thread
-     */
-    const getThreadNextIndex = (threadId = MAIN_THREAD_ID) => {
-        let thread = cacheThreads[threadId];
-        // for the main thread return -1 as this is irrelevant - indices might change as nodes are removed from the
-        // main thread
-        return thread && threadId !== MAIN_THREAD_ID ? thread.current + 1 : -1;
-    };
 
     /**
      * Configures the property names used to track item merging prevalence.
@@ -260,9 +211,7 @@ function getCache(debugParam = false) {
      * @param {boolean} strong force replace items on the cache even if they exist
      * @returns {*} true if the cache has been modified, false otherwise or the object itself if the item has no uid
      */
-    const put = (entityOrArray, threadIds = MAIN_THREAD_ID, strong = true) => {
-        threadIds = getThreadIds(threadIds, true);
-
+    const put = (entityOrArray, strong = true) => {
         // TODO ****** freeze arrays on put
         // only mergeThread entities with uid
         if ((isArray(entityOrArray) || isObject(entityOrArray))) {
@@ -281,7 +230,7 @@ function getCache(debugParam = false) {
             if (flushMap.size > 0 && changed) {
                 // remove from the nodes all states coming after the current state (clears history after now)
                 clearNext();
-                addItems([...flushMap.values()], threadIds, evictMap);
+                addItems([...flushMap.values()], evictMap);
                 notify();
                 success = true;
             }
@@ -289,48 +238,6 @@ function getCache(debugParam = false) {
         } else {
             return getHistoryState(false);
         }
-    };
-
-    /**
-     * Allows only string id threads. The id must be in the allowedThreads array
-     * @param threadId
-     */
-    const ensureThreadValid = threadId => {
-        if (!isString(threadId)) {
-            throw new TypeError("[One] Only string thread ids are allowed. ThreadId:" + threadId);
-        }
-        let threadIndex = allowedThreads.indexOf(threadId);
-        if (threadIndex < 0) {
-            throw new TypeError("[One] This thread id is not allowed for use at the moment. ThreadId:" + threadId + ", allowed:" + allowedThreads.join(" "));
-        }
-    };
-
-    /**
-     * Puts all thread ids in an array for processing.
-     *
-     * @param threadId
-     * @param withCreate
-     * @returns {*}
-     */
-    const getThreadIds = (threadId, withCreate = false) => {
-        let threadIds;
-        let validate = withCreate === true;
-        if (isArray(threadId)) {
-            if (validate) {
-                threadId.forEach(thdId => {
-                    ensureThreadValid(thdId);
-                    createThread(thdId);
-                });
-            }
-            threadIds = threadId;
-        } else {
-            ensureThreadValid(threadId);
-            if (validate) {
-                createThread(threadId);
-            }
-            threadIds = [threadId];
-        }
-        return threadIds;
     };
 
     /**
@@ -458,13 +365,12 @@ function getCache(debugParam = false) {
      * @param uidOrEntityOrArray
      */
     const get = uidOrEntityOrArray => {
-        let threadId = MAIN_THREAD_ID;
         if (!uidOrEntityOrArray) {
             throw new TypeError("Cache-uid get(): requires a uid to retrieve an item from the cache.");
         }
         if (isArray(uidOrEntityOrArray)) {
             return uidOrEntityOrArray.map(item => {
-                return getObject(item, threadId);
+                return getObject(item);
             }).filter(item => {
                 return item !== null && item !== undefined;
             })
@@ -522,7 +428,7 @@ function getCache(debugParam = false) {
             tempState.delete(key);
         });
 
-        flush(tempState, MAIN_THREAD_ID);
+        flush(tempState);
         notify();
         return true;
     };
@@ -764,10 +670,6 @@ function getCache(debugParam = false) {
                         return item !== null && item !== undefined;
                     });
 
-                    //if (Object.isFrozen(item[REF_TO])) {
-                    //    cloneRef(item, REF_TO);
-                    //}
-
                     // update or remove the paths
                     if (updatedPaths.length > 0) {
                         item[REF_TO][refToUid] = updatedPaths;
@@ -991,10 +893,10 @@ function getCache(debugParam = false) {
      * @param strong
      * @returns {boolean}
      */
-    const isOnCache = (entity, threadId = MAIN_THREAD_ID) => {
+    const isOnCache = (entity) => {
         // this is only called for uid items so ok not to check for uid
         let uid          = entity[config.prop.uidName];
-        let existingItem = getLiveItem(uid, threadId);
+        let existingItem = getLiveItem(uid);
         return existingItem && existingItem[ENTITY] === entity;
     };
 
@@ -1062,18 +964,8 @@ function getCache(debugParam = false) {
     // when caching props must keep track of all uid objects embedded inside the entity. This is because if a new
     // version of the entity is saved and those objects have been removed the cache pointer references must also be
     // updated. In order to do this efficiently every entity's item must keep a map of each referenced object it
-    // contains. The map (an object really) keeps track of the referenced object's uid (the key) AND the number of
-    // references the entity contains. After caching a new version of the entity we can compare the number of
-    // references the current version contains to the number of references previously present and update the
-    // reference's pointer list in case anything has changed meaningfully.
-    // For example:
-    // item1 = {entity:{uid:1, item:item2, items:[item2]}, pointers:[], refs:{2:2}} (there are 2 references to the
-    // item2 (uid:2) in this entity.
-    // Update: item1 = {entity:{uid:1, items:[item2]}}, pointers:[], refs:{2:1}} (there is now only one reference to
-    // item2 but still there so item2 pointers do not need to be altered (item2 is still pointed at by item1). If
-    // removing item2 from items:[] then there will be no more references to item2 from item1 and item1 uid must be
-    // removed from item2 pointer list. Additionally if item2 pointer list is now empty then item2 itself should be
-    // removed from the cache (consistent state, garbage collection etc).
+    // contains. The map (an object really) keeps track of the referenced object's uid (the key) AND the path to where
+    // the entity is located inside the parent. Since all cache data is immutable this doesn't change.
 
     /**
      * Records the dependencies of a uid entity (in refItem) to its containing uid entity (in parentItem).
@@ -1109,20 +1001,19 @@ function getCache(debugParam = false) {
      * @returns {Map}
      */
     const getCurrentMainStack = () => {
-        let currentMainNode = getCurrentThreadNode(MAIN_THREAD_ID);
+        let currentMainNode = getCurrentNode();
         return currentMainNode ? currentMainNode.items : new Map();
     };
 
     /**
-     * For items that are unique in context all references on the map must point to same single object. In order to
+     * For items that are unique in context all references on the map must point to the same single object. In order to
      * prevent the map from replicating itself on each set operation this must be executed with mutations thus
      * adding all items on the same mutating instance of the map. All items to be added must have been previously
      * collected in the array.
      * @param flushArray array of items to be put into the cache
-     * @param threadIds the id of the gap to put to if applicable
      * @param evictMap map of items that were de-referenced and should be removed from the next cache node
      */
-    const addItems = (flushArray, threadIds, evictMap) => {
+    const addItems = (flushArray, evictMap) => {
         // get a copy of the current nodes
         let temp         = new Map();
         let currentStack = getCurrentMainStack();
@@ -1143,7 +1034,7 @@ function getCache(debugParam = false) {
             });
         }
 
-        flush(temp, threadIds);
+        flush(temp);
     };
 
     // GET UTILS
@@ -1214,13 +1105,10 @@ function getCache(debugParam = false) {
      */
     const index = idx => {
         // just in case
-        createThread(MAIN_THREAD_ID);
-
         if (isNumber(idx) === true) {
-            let currentIndex = cacheThreads[MAIN_THREAD_ID].current;
-            if (currentIndex !== idx) {
+            if (mainThread.current !== idx) {
                 if (idx >= 0 && idx < length()) {
-                    cacheThreads[MAIN_THREAD_ID].current = idx;
+                    mainThread.current = idx;
                 } else {
                     throw new TypeError("Index out of bounds");
                 }
@@ -1230,21 +1118,23 @@ function getCache(debugParam = false) {
             return false;
         }
         // for any other argument or no arg return the current index value
-        return cacheThreads[MAIN_THREAD_ID].current;
+        return mainThread.current;
     };
 
     /**
+     * Gets or sets the current position of the cache by node id. Using index() is not always reliable in case some
+     * nodes are deleted to clear up memory. Node is more reliable in terms of getting the id of a node that can be
+     * checked for existence.
      *
-     *
-     * @param nodeId
-     * @returns {*}
+     * @param nodeId the id of the node to navigate to if applicable
+     * @returns {*} for node() - the id of the node if existing or -1 if cache is empty, for node(id) the current
+     *     history state
      */
     const node = nodeId => {
-        createThread(MAIN_THREAD_ID);
-
         // guard for 0 values
         if (typeof nodeId === "undefined") {
-            return getCurrentThreadNode().id;
+            let currentNode = getCurrentNode();
+            return currentNode ? currentNode.id : -1;
         }
 
         if (!isNumber(nodeId)) {
@@ -1255,7 +1145,6 @@ function getCache(debugParam = false) {
         if (!cacheNode) {
             return getHistoryState(false);
         }
-        let mainThread     = cacheThreads[MAIN_THREAD_ID];
         mainThread.current = binaryIndexOf(mainThread.nodes, nodeId);
         return getHistoryState(true);
     };
@@ -1378,13 +1267,12 @@ function getCache(debugParam = false) {
      * @returns {{}}
      */
     const undo = () => {
-        let thread  = createThread(MAIN_THREAD_ID);
         let success = false;
-        if (thread && hasPrev(MAIN_THREAD_ID)) {
-            thread.current -= 1;
+        if (hasPrev()) {
+            mainThread.current -= 1;
             success = true;
         }
-        return getHistoryState(success, MAIN_THREAD_ID);
+        return getHistoryState(success);
     };
 
     /**
@@ -1393,13 +1281,12 @@ function getCache(debugParam = false) {
      * @returns {{}}
      */
     const redo = () => {
-        let thread  = createThread(MAIN_THREAD_ID);
         let success = false;
-        if (thread && hasNext(MAIN_THREAD_ID)) {
-            thread.current += 1;
+        if (hasNext()) {
+            mainThread.current += 1;
             success = true;
         }
-        return getHistoryState(success, MAIN_THREAD_ID);
+        return getHistoryState(success);
     };
 
     /**
@@ -1408,55 +1295,29 @@ function getCache(debugParam = false) {
      * @param threadId optional thread id to request the cache history state for a specific thread
      * @returns {{}}
      */
-    const getHistoryState = (success, threadId) => {
-        if (threadId) {
-            if (typeof threadId === "string" || typeof threadId === "number") {
-                // ok
-            } else {
-                throw new TypeError("Get history state errror: The thread id must be a string or a number: "
-                    + threadId + ":" + typeof threadId);
-            }
-        }
-
-        let result     = {threads: {}};
+    const getHistoryState = (success) => {
+        let result     = {};
         result.success = success;
-
-        let threadIds;
-        threadIds = [MAIN_THREAD_ID, threadId];
-
-        threadIds.forEach(thId => {
-            setThreadState(result, thId);
-        });
+        result.index   = index();
+        result.node    = node();
+        result.length  = length();
+        result.hasPrev = result.index > 0;
+        result.hasNext = result.index < (result.length - 1);
         return result;
-    };
-
-    const setThreadState = (result, threadId) => {
-        if (cacheThreads[threadId]) {
-            let currentIndex         = index();
-            let lgth                 = length(threadId);
-            result.threads[threadId] = {
-                currentIndex: currentIndex,
-                length      : lgth,
-                hasPrev     : currentIndex > 0,
-                hasNext     : currentIndex < lgth - 1
-            };
-        }
     };
 
     /**
      * Has a next state to redo to.
      */
-    const hasNext = (threadId = MAIN_THREAD_ID) => {
-        let thread = cacheThreads[threadId];
-        return thread ? thread.current < (thread.nodes.length - 1) : false;
+    const hasNext = () => {
+        return mainThread.current < (mainThread.nodes.length - 1);
     };
 
     /**
      * Has a previous state to undo to.
      */
-    const hasPrev = (threadId = MAIN_THREAD_ID) => {
-        let thread = cacheThreads[threadId];
-        return thread ? thread.current > 0 : false;
+    const hasPrev = () => {
+        return mainThread.current > 0;
     };
 
     /**
@@ -1464,7 +1325,7 @@ function getCache(debugParam = false) {
      * @returns {*}
      */
     const size = () => {
-        let cacheNode = getCurrentThreadNode(MAIN_THREAD_ID);
+        let cacheNode = getCurrentNode();
         return cacheNode ? cacheNode.items.size : 0;
     };
 
@@ -1473,7 +1334,6 @@ function getCache(debugParam = false) {
      * @returns {Number}
      */
     const length = () => {
-        let mainThread = createThread(MAIN_THREAD_ID);
         return mainThread.nodes.length;
     };
 
@@ -1492,13 +1352,11 @@ function getCache(debugParam = false) {
      * @param threadId
      */
     const clearNext = () => {
-        let thread = createThread(MAIN_THREAD_ID);
-
         // clear all nodes after this one
-        if (thread.current < thread.nodes.length - 1) {
-            let removedNodes = thread.nodes.slice(thread.current + 1, thread.nodes.length);
-            thread.nodes     = thread.nodes.slice(0, thread.current + 1);
-            thread.current   = thread.nodes.length - 1;
+        if (mainThread.current < mainThread.nodes.length - 1) {
+            let removedNodes   = mainThread.nodes.slice(mainThread.current + 1, mainThread.nodes.length);
+            mainThread.nodes   = mainThread.nodes.slice(0, mainThread.current + 1);
+            mainThread.current = mainThread.nodes.length - 1;
             truncateThreads(removedNodes);
         }
     };
@@ -1528,27 +1386,11 @@ function getCache(debugParam = false) {
             Object.freeze(temp);
             let cacheNode   = getNewCacheNode();
             cacheNode.items = temp;
-            if (typeof threadIds !== "undefined") {
-                if (cacheNode.threads === undefined) {
-                    cacheNode.threads = getNewLengthObj();
-                }
-                // always add to main
-                addThreadNode(cacheNode, MAIN_THREAD_ID);
-            }
-        }
-    };
 
-    /**
-     * Assigns a node to a specific thread.
-     *
-     * @param cacheNode
-     * @param threadId
-     */
-    const addThreadNode = (cacheNode, threadId) => {
-        let thread = createThread(threadId);
-        if (cacheNode.threads.addThread(threadId, getThreadNextIndex(threadId))) {
-            thread.nodes.push(cacheNode.id);
-            thread.current += 1;
+            if (mainThread.nodes.indexOf(cacheNode.id) < 0) {
+                mainThread.nodes.push(cacheNode.id);
+                mainThread.current += 1;
+            }
         }
     };
 
@@ -1558,18 +1400,19 @@ function getCache(debugParam = false) {
      * @param uid
      * @returns {*}
      */
-    const getLiveItem = (uid) => {
-        let currentNode = getCurrentThreadNode();
+    const getLiveItem = uid => {
+        let currentNode = getCurrentNode();
         return currentNode ? currentNode.items.get(String(uid)) : undefined;
     };
 
     /**
+     * The node currently being displayed by the cache.
+     *
      * @param threadId
      * @returns {undefined} the cache node that the thread is currently left pointing at.
      */
-    function getCurrentThreadNode() {
-        let thread        = cacheThreads[MAIN_THREAD_ID];
-        let currentNodeId = thread ? thread.nodes[thread.current] : undefined;
+    function getCurrentNode() {
+        let currentNodeId = mainThread.nodes[mainThread.current];
         // watch out currentNodeId evaluates to false when it's 0
         return currentNodeId >= 0 ? getRepoNode(currentNodeId) : undefined;
     }
@@ -1581,23 +1424,13 @@ function getCache(debugParam = false) {
     // ----------------------------------
 
     const print = () => {
-        let result     = "";
-        let index      = 0;
-        let mainThread = cacheThreads[MAIN_THREAD_ID];
-        if (!mainThread) {
-            console.log("\n------ One -------"
-                + "\n no data yet"
-                + "\n===================\n");
-            return;
-        }
+        let result  = "";
+        let index   = 0;
         let current = mainThread.current;
         mainThread.nodes.map(cacheNodeId => {
             let streamData = "";
             let cacheNode  = repo.get(cacheNodeId);
-            if (cacheNode.threads) {
-                streamData = JSON.stringify(cacheNode.threads);
-            }
-            let state = index + ":" + streamData + "\n[" + stringifyMap(cacheNode.items) + "],\n\n";
+            let state      = index + ":" + streamData + "\n[" + stringifyMap(cacheNode.items) + "],\n\n";
             // let state = index + ":" + streamData + "\n" + JSON.stringify(repo[cacheNode].items) + ",\n\n";
             if (index === current) {
                 state = "-> " + state;
@@ -1614,7 +1447,7 @@ function getCache(debugParam = false) {
             + "\nSTACK:\n" + result
             + "\n\nCONFIG:" + JSON.stringify(config, null, 2)
             + "\n\nQUEUE:" + JSON.stringify(putQueue, null, 2)
-            + "\n\nTHREADS:" + JSON.stringify(cacheThreads, null, 2)
+            + "\n\nHISTORY:" + JSON.stringify(getHistoryState(), null, 2)
             + "\n\nREPO SIZE:" + repo.size
             + "\n===================\n");
     };
@@ -1753,7 +1586,7 @@ function getCache(debugParam = false) {
     };
 
     if (debugParam === true) {
-        base.getCurrentNode = getCurrentThreadNode;
+        base.getCurrentNode = getCurrentNode;
 
         base.refFrom = refFrom;
         base.refTo   = refTo;

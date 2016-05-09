@@ -49,10 +49,8 @@ describe("Time travel", function () {
         expect(One.size()).to.equal(1);
 
         let state    = One.getHistoryState();
-        let mainData = state.threads["main"];
-        expect(mainData).to.not.be.undefined;
-        expect(mainData.currentIndex).to.equal(0);
-        expect(mainData.length).to.equal(2);
+        expect(state.index).to.equal(0);
+        expect(state.length).to.equal(2);
         expect(One.get(1)).to.not.be.undefined;
         expect(One.get(1).text).to.equal("text");
     });
@@ -67,9 +65,9 @@ describe("Time travel", function () {
         One.undo();
         One.redo();
         expect(One.size()).to.equal(2);
-        let mainData = One.getHistoryState().threads["main"];
-        expect(mainData.currentIndex == (mainData.length - 1)).to.be.true;
-        expect(mainData.currentIndex > 0).to.be.true;
+        let state = One.getHistoryState();
+        expect(state.hasNext).to.be.false;
+        expect(state.hasPrev).to.be.true;
     });
 
     it("gets the correct index", function () {
@@ -183,6 +181,10 @@ describe("Time travel", function () {
         expect(state.success).to.be.true;
         expect(One.get(2)).to.be.undefined;
         expect(One.get(3)).to.be.undefined;
+    });
+
+    it("returns -1 on node() if cache is empty", function(){
+       expect(One.node()).to.equal(-1);
     });
 });
 
