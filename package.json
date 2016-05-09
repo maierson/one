@@ -11,7 +11,7 @@
     "build:js:min": "webpack --config webpack.config.production.js",
     "build:lib": "babel src --out-dir lib",
     "build": "npm run build:lib && npm run build:js && npm run build:js:min",
-    "tt": "webpack --config webpack.tt.config.js",
+    "tt": "webpack --config webpack.tt.config.js && webpack --config webpack.st.config.js",
     "prepub": "npm run clean && npm run build"
   },
   "keywords": [

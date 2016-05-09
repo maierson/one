@@ -13,7 +13,7 @@ import deepFreeze from '../src/utils/deepFreeze'
 import {deepClone, isArray, hasUid} from '../src/utils/clone';
 import {describe, it} from 'mocha/lib/mocha.js';
 
-describe("utils", function () {
+describe("Utils", function () {
 
     "use strict";
 
@@ -57,17 +57,17 @@ describe("utils", function () {
     });
 
     describe("clone", function () {
-        it("hasUid should return false on non object", function(){
-           expect(hasUid()).to.be.false;
+        it("hasUid should return false on non object", function () {
+            expect(hasUid()).to.be.false;
         });
 
         it("should not clone if not object or array", function () {
             expect(deepClone(2)).to.equal(2);
         });
 
-        it("should clone date", function(){
-           let date = new Date();
-            let item1 = {uid:1, date: date};
+        it("should clone date", function () {
+            let date   = new Date();
+            let item1  = {uid: 1, date: date};
             let result = deepClone(item1);
             expect(result.date).to.not.be.undefined;
             expect(result.date === date).to.be.false;

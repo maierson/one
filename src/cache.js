@@ -108,7 +108,7 @@ function getCache(debugParam = false) {
      * Increment this key every time a new node is assigned.
      * @type {number}
      */
-    let nextStackKey = 0;
+    let nextNodeKey = 0;
 
     /**
      * Store all nodes in a centralized repository to access them by key. The key needs to be unique only amongst
@@ -147,7 +147,7 @@ function getCache(debugParam = false) {
         repo.clear();
         // create the main thread
         //createThread(MAIN_THREAD_ID);
-        nextStackKey = 0;
+        nextNodeKey = 0;
     };
 
     reset();
@@ -197,8 +197,8 @@ function getCache(debugParam = false) {
      */
     function getNewCacheNode() {
         let node = getNewLengthObj();
-        node.id  = nextStackKey;
-        nextStackKey += 1;
+        node.id  = nextNodeKey;
+        nextNodeKey += 1;
         repo.set(node.id, node);
         return node;
     }
@@ -1209,20 +1209,90 @@ function getCache(debugParam = false) {
      * provided it sets the current index to the given value if it is an integer within the cache's length.
      *
      * * @param idx
-     * @returns {number} the current index in the nodes order.
+     * @returns {number|boolean} the current index in the nodes order, or when setting the index, true if the index has
+     *     changed, false otherwise
      */
     const index = idx => {
-        if(!idx){
-            return cacheThreads[MAIN_THREAD_ID].current;
-        } else if(isNumber(idx)) {
-            if(idx >= 0 && idx < length()){
-                cacheThreads[MAIN_THREAD_ID].current = idx;
-            } else {
-                throw new TypeError("Index out of bounds");
+        // just in case
+        createThread(MAIN_THREAD_ID);
+
+        if (isNumber(idx) === true) {
+            let currentIndex = cacheThreads[MAIN_THREAD_ID].current;
+            if (currentIndex !== idx) {
+                if (idx >= 0 && idx < length()) {
+                    cacheThreads[MAIN_THREAD_ID].current = idx;
+                } else {
+                    throw new TypeError("Index out of bounds");
+                }
+                notify();
+                return true;
+            }
+            return false;
+        }
+        // for any other argument or no arg return the current index value
+        return cacheThreads[MAIN_THREAD_ID].current;
+    };
+
+    /**
+     *
+     *
+     * @param nodeId
+     * @returns {*}
+     */
+    const node = nodeId => {
+        createThread(MAIN_THREAD_ID);
+
+        // guard for 0 values
+        if (typeof nodeId === "undefined") {
+            return getCurrentThreadNode().id;
+        }
+
+        if (!isNumber(nodeId)) {
+            throw new TypeError("The node id must be a number.");
+        }
+
+        let cacheNode = getRepoNode(nodeId);
+        if (!cacheNode) {
+            return getHistoryState(false);
+        }
+        let mainThread     = cacheThreads[MAIN_THREAD_ID];
+        mainThread.current = binaryIndexOf(mainThread.nodes, nodeId);
+        return getHistoryState(true);
+    };
+
+    /**
+     * Performs a binary search on the array argument O(log(n)). Use to search for item in the main stack which is
+     * sorted.
+     *
+     * @param {[]} array The sorted array to search on.
+     * @param {*} searchElement The item to search for within the array.
+     * @return {Number} The index of the element which defaults to -1 when not found.
+     *
+     * http://oli.me.uk/2013/06/08/searching-javascript-arrays-with-a-binary-search/
+     */
+    function binaryIndexOf(array, searchElement) {
+        var minIndex = 0;
+        var maxIndex = array.length - 1;
+        var currentIndex;
+        var currentElement;
+
+        while (minIndex <= maxIndex) {
+            currentIndex   = (minIndex + maxIndex) / 2 | 0;
+            currentElement = array[currentIndex];
+
+            if (currentElement < searchElement) {
+                minIndex = currentIndex + 1;
+            }
+            else if (currentElement > searchElement) {
+                maxIndex = currentIndex - 1;
+            }
+            else {
+                return currentIndex;
             }
         }
-        // for non numbers just fail silently
-    };
+        /* istanbul ignore next - it never gets here really*/
+        return -1;
+    }
 
     /**
      *  Gets a shallow copy of the object maintaining all the deep uid references intact (keep identity) so that ui
@@ -1614,7 +1684,7 @@ function getCache(debugParam = false) {
      * Call all the listeners in order to notify them of a state change.
      * @param {Array} modified list of uid of entities that have been modified - if applicable.
      */
-    const notify = (modified) => {
+    const notify = modified => {
         listeners.slice().forEach(listener => {
             listener(modified);
         });
@@ -1671,14 +1741,15 @@ function getCache(debugParam = false) {
         undo           : undo,
         redo           : redo,
         index          : index,
+        node           : node,
         getHistoryState: getHistoryState,
 
         // utils
-        isDirty        : isDirty,
-        uuid           : createUUid,
-        contains       : contains,
-        config         : setConfig,
-        subscribe      : subscribe
+        isDirty  : isDirty,
+        uuid     : createUUid,
+        contains : contains,
+        config   : setConfig,
+        subscribe: subscribe
     };
 
     if (debugParam === true) {

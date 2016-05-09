@@ -13,7 +13,7 @@ import {deepClone, isArray} from '../src/utils/clone';
 import * as objectPath from "../src/utils/path";
 import {describe, it} from 'mocha/lib/mocha.js';
 
-describe("path", function () {
+describe("Path", function () {
 
     "use strict";
 
