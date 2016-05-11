@@ -41,46 +41,6 @@ item1 === One.get(item1) // true (same object)
 item2.ref === One.get(1) // true
 ```
 
-###Threading
-```One``` can place entities on separate [threads](https://maierson.gitbooks.io/one/content/threads.html) for a granular control of the time travelling mechanism.
-
-```js
-let item1 = {uid:1}
-One.put(item1, "thread1") // item1 is on 2 threads "main" and "thread1"
-
-let editable = One.get(1)
-editable.text = "background"
-One.put(editable) // editable is on "main" thread only
-
-let otherEditable = One.get(1)
-otherEditable.text = "thread1Edited"
-One.put(otherEditable, "thread1") // otherEditable is on "main" and "thread1"
-
-// time travel can now be done on either "main" thread or "thread1"
-// on thread1
-One.get(1).text // "thread1Edited"
-// also 
-One.get(1, "thread1").text // "thread1Edited" both threads are left on their last put operation
-
-// travel back on thread1 = to the first put operation
-One.undo("thread1")
-One.get(1, "thread1").text // undefined (jumped straight to the first node)
-
-// but
-One.get(1).text // still "thread1Edited" as the main thread is still positioned at the last node where we left it
-
-// now travel on main thread. "main" thread is left 
-// where it was after the last put operation 
-// (threads can travel separately)
-One.undo()
-One.get(1).text // "background"
-
-One.undo()
-One.get(1).text // undefined
-One.redo()
-One.get(1).text // "background"
-```
-
 ###Immutable 
 All data is immutable. Once an item enters the cache it freezes and cannot change. This is to enable quick identity checks against immutable entities (ie React identity check). 
 
@@ -130,7 +90,6 @@ One.put(editable) // also updates item2 reference to item
 let result = One.get(2)
 console.log(JSON.stringify(result.item)) // {uid:1, text:"test"}
 ```
-
 
 ###Motivation
 More an more applications are giving users the ability to edit data in the browser. 

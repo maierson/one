@@ -366,7 +366,7 @@ function getCache(debugParam = false) {
      */
     const get = uidOrEntityOrArray => {
         if (!uidOrEntityOrArray) {
-            throw new TypeError("Cache-uid get(): requires a uid to retrieve an item from the cache.");
+            throw new TypeError("One get(): requires a uid to retrieve an item from the cache.");
         }
         if (isArray(uidOrEntityOrArray)) {
             return uidOrEntityOrArray.map(item => {
@@ -1487,7 +1487,7 @@ function getCache(debugParam = false) {
      * @param {string} threadId id of the thread on which the entity is compared for identity
      * @returns {boolean}
      */
-    const isDirty = (uidEntity) => {
+    const isDirty = uidEntity => {
         if (!hasUid(uidEntity)) {
             return true;
         }
