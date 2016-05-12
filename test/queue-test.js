@@ -404,6 +404,16 @@ describe("Queue", function () {
         expect(One.pending().queue).to.equal(0);
         let result = One.get(1);
         expect(item1 === result).to.be.true;
+    });
+
+    it("clears the queue on commit", function () {
+        One.queue({uid: 1});
+        One.queue({uid: 2});
+        One.commit();
+        expect(One.getQueued(1)).to.be.undefined;
+        expect(One.getQueued(2)).to.be.undefined;
+        expect(One.get(1)).to.not.be.undefined;
+        expect(One.get(2)).to.not.be.undefined;
     })
 });
 

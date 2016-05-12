@@ -38,7 +38,7 @@ export function isEmpty(value) {
  * @param force
  * @returns {*}
  */
-export function deepClone(obj, uidReference, freeze = true, force = false) {
+export function deepClone(obj, uidReference, freeze = true) {
     if (!obj || (!isObject(obj) && !isArray(obj))) {
         return obj;
     }
@@ -59,7 +59,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
             let value = result[propName];
             if (value) {
                 if (isArray(value)) {
-                    result[propName] = deepCloneArray(value, uidReference, force);
+                    result[propName] = deepCloneArray(value, uidReference, freeze);
                 } else if (isDate(value)) {
                     let date = new Date(value.getTime());
                     if (freeze === true) {
@@ -80,7 +80,7 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
                             //result[propName] = deepClone(value);
                         }
                     } else {
-                        result[propName] = deepClone(value, uidReference, freeze, force);
+                        result[propName] = deepClone(value, uidReference, freeze);
                     }
                 }
             }
@@ -92,16 +92,19 @@ export function deepClone(obj, uidReference, freeze = true, force = false) {
     return result;
 }
 
-function deepCloneArray(arr, uidReference, force) {
+function deepCloneArray(arr, uidReference, freeze) {
     return arr.map(item => {
         if (isArray(item)) {
-            return deepCloneArray(item, uidReference, force);
+            return deepCloneArray(item, uidReference, freeze);
         } else if (isObject(item)) {
             // *** keep items inside clones as we're not editing them = must getEdit on item
-            if (hasUid(item) && force === false) {
+            if (hasUid(item)) {
+                if(uidReference && (item[config.prop.uidName] === uidReference[config.prop.uidName])){
+                    return uidReference;
+                }
                 return item;
             } else {
-                return deepClone(item, uidReference, force);
+                return deepClone(item, uidReference, freeze);
             }
         } else {
             return item;

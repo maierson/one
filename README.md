@@ -111,14 +111,7 @@ If you were to track all instances of an entity on each update the write penalty
 
 ###Data shape
 This is not currently designed to work with cyclical data. It is best for non-cyclical objects received from the server in the form of json (or other non-cyclical fomats).  
-If a strong need arises for managing cyclical structures this might be an option for future development.
-
-###Release Notes
-5.1.0 
-* remove thread api, time travel works on main thread only to prevent mixing data from different cache nodes
-* ```getCurrentIndex()``` change to ```index()``` with dual nature to get or set the current index.
-* add ```node()``` api in order to locate cache nodes by their id  
-Replaces the threading option in a much simpler and intuitive manner since threads are only a way of jumping around in time on the cache.
+It might happen later if there's a need.
 
 ###Documentation
 * [Immutable data](https://maierson.gitbooks.io/one/content/immutable_data.html)
@@ -127,5 +120,6 @@ Replaces the threading option in a much simpler and intuitive manner since threa
   * [Get](https://maierson.gitbooks.io/one/content/get.html)
   * [Evict](https://maierson.gitbooks.io/one/content/evict.html)
 * [Time travel](https://maierson.gitbooks.io/one/content/time_travel.html)
+* [Release Notes](https://maierson.gitbooks.io/one/content/release_notes.html)
 
     

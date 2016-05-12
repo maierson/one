@@ -474,16 +474,20 @@ function getCache(debugParam = false) {
         // at this point all items are added into the flush map - update their pointers if applicable
         flushMap.forEach((item, key) => {
             if (key !== UPDATED_KEY) {
+
                 // do not modify flush map on its own iteration but ok to pass along for reference
                 let refsFrom = item[REF_FROM];
+
                 // parentUid = uid of the item being targeted for ref update (ie the ref's parent)
                 for (let parentUid in refsFrom) {
                     if (refsFrom.hasOwnProperty(parentUid)) {
+
                         let paths      = refsFrom[parentUid];
                         let parentItem = flushMap.get(parentUid);
                         if (!parentItem) {
                             parentItem = getLiveItem(parentUid);
                         }
+
                         /* only update if dirty - no need to iterate all paths - just check the first one
                          - if dirty then the parent entity needs to be cloned and updated anyways so pass in
                          the ref entity when cloning - it will be updated wherever it is encountered during cloning */
@@ -492,10 +496,11 @@ function getCache(debugParam = false) {
                             let targetRef = opath.get(parentItem[ENTITY], firstPath);
                             // check for dirty
                             let dirty = (targetRef && targetRef !== item[ENTITY]);
+
                             if (dirty === true) {
                                 parentItem = ensureItem(parentItem[ENTITY], flushMap);
                                 // the entity is still frozen here - clone it to update and freeze it deeply
-                                parentItem[ENTITY] = deepClone(parentItem[ENTITY], item[ENTITY], true, true);
+                                parentItem[ENTITY] = deepClone(parentItem[ENTITY], item[ENTITY], true);
                             }
                         }
                     }

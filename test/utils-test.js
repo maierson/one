@@ -9,6 +9,8 @@ import {
     print,
     contains
 } from './test_helper';
+import createCache from '../src/cache';
+import * as config from '../src/utils/config';
 import deepFreeze from '../src/utils/deepFreeze'
 import {deepClone, isArray, hasUid} from '../src/utils/clone';
 import {describe, it} from 'mocha/lib/mocha.js';
@@ -17,12 +19,19 @@ describe("Utils", function () {
 
     "use strict";
 
-    beforeEach(function () {
+    let One;
 
+    beforeEach(function () {
+        One = createCache(true);
+        // reset config before each call
+        One.config({
+            uidName         : "uid",
+            maxHistoryStates: 1000
+        })
     });
 
     afterEach(function () {
-
+        One.reset();
     });
 
     function getTestObj() {
@@ -124,9 +133,17 @@ describe("Utils", function () {
             expect(result.arr[3][1].date.getTime()).to.equal(date.getTime());
         });
 
+        it("returns the object when cloning with replace of itself", function(){
+            let item1 = {uid:1};
+            let result = deepClone(item1, item1, false);
+            expect(item1 === result).to.be.true;
+        });
+
         it("should replace item not freeze", function () {
             let obj    = getTestObj();
+            expect(Object.isFrozen(obj.c)).to.be.false;
             let result = deepClone(obj, {uid: 1, text: "test"}, false);
+
             expect(result.c).to.not.be.undefined;
             expect(Object.isFrozen(result.c)).to.be.false;
             expect(result.c.text).to.equal("test");
@@ -137,6 +154,96 @@ describe("Utils", function () {
             expect(hasUid({})).to.be.false;
         })
     });
+
+    describe("clear", function () {
+        it("clears the cache", function () {
+            let item1 = {uid: 1};
+            let item2 = {uid: 2};
+            let item3 = {
+                uid : 3,
+                item: item1
+            };
+            One.put(item3);
+            One.put(item2);
+            One.reset();
+            expect(One.size()).to.equal(0);
+            expect(One.length()).to.equal(0);
+        })
+    });
+
+    describe("config", function () {
+        it("sets the config correctly", function () {
+            expect(config.prop.uidName).to.equal("uid");
+            expect(config.prop.maxHistoryStates).to.equal(1000);
+
+            let newConfig = {
+                uidName         : "uniqueId",
+                maxHistoryStates: 20
+            };
+            One.config(newConfig);
+            expect(config.prop.maxHistoryStates).to.equal(20);
+            expect(config.prop.uidName).to.equal("uniqueId");
+        });
+
+        it("fails to set config if there are items in the cache", function () {
+            let a = {uid: 1};
+            One.put(a);
+            let config = {
+                uidName: "uuid"
+            }
+            expect(() => {
+                One.config(config)
+            }).to.throw(Error);
+        });
+
+        it("it configures a cleared cache", function () {
+            let a = {uid: 1};
+            One.put(a);
+            One.reset();
+            let conf = {
+                uidName: "uniqueId"
+            };
+            One.config(conf);
+            expect(config.prop.uidName).to.equal("uniqueId");
+        });
+
+        //it("maintains the correct number of configured history states", function () {
+        //    expect(0, "Not impletmented").to.equal(1);
+        //});
+    });
+
+    describe("print", function () {
+        it("prints", function () {
+            let item  = {uid: 1};
+            let item2 = {
+                uid  : 2,
+                child: item
+            };
+            One.put(item2);
+            expect(One.get(1)).to.not.be.undefined;
+            expect(One.print()).to.be.undefined;
+        });
+
+        it("prints empty", function () {
+            expect(() => {
+                One.print()
+            }).to.not.throw(Error);
+        })
+    });
+
+    describe("dirty", function () {
+        it("reads non uid item as dirty", function () {
+            expect(One.isDirty({})).to.be.true;
+            expect(One.isDirty({}, 1)).to.be.true;
+        })
+
+    })
+
+    describe("uid", function () {
+        it("creates uid", function () {
+            expect(One.uuid()).to.not.be.undefined;
+        })
+    })
 });
 
 

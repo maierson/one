@@ -89,7 +89,7 @@ describe("Notify", function () {
         One.evict(2);
         expect(listener1).to.have.been.calledTwice;
         expect(listener2).to.have.been.calledOnce;
-    });
+    })
 
     it("notifies when changing the index", function () {
         One.put({uid: 1});
