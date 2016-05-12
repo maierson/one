@@ -499,6 +499,10 @@ function getCache(debugParam = false) {
 
                             if (dirty === true) {
                                 parentItem = ensureItem(parentItem[ENTITY], flushMap);
+
+                                // TODO figure out a way to not clone the entity every time particularly if it is
+                                // already present on the flush map
+
                                 // the entity is still frozen here - clone it to update and freeze it deeply
                                 parentItem[ENTITY] = deepClone(parentItem[ENTITY], item[ENTITY], true);
                             }
