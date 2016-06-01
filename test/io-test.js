@@ -1324,16 +1324,25 @@ describe("IO", function () {
             expect(result === item1).to.be.true;
         });
 
-        it("doesn't replace existing entities when putting weak new version inside array", function(){
-            let item1 = {uid:1};
-            let item2 = {uid:2, item: item1};
+        it("doesn't replace existing entities when putting weak new version inside array", function () {
+            let item1 = {uid: 1};
+            let item2 = {uid: 2, item: item1};
             One.put(item2);
-            let item1a = {uid:1};
+            let item1a = {uid: 1};
             // put it weakly
             One.put([item1a], false);
             let result = One.get(1);
             expect(result === item1).to.be.true;
             expect(result === item1a).to.be.false;
+        });
+
+        it("doesn't replace direct existing entity on weak put", function () {
+            let item1  = {uid: 1};
+            let item1a = {uid: 1, val: "value"};
+            One.put(item1);
+            One.put(item1a, false);
+            let result = One.get(1);
+            expect(result.val).to.be.undefined;
         })
     });
 

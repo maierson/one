@@ -26,7 +26,7 @@ module.exports = {
         loaders: [
             {
                 test   : /\.jsx?$/,
-                loaders: ['babel'],
+                loaders: ['babel-loader'],
                 include: APP_PATH,
                 exclude: /node_modules/
             }

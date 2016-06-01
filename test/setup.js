@@ -1,6 +1,5 @@
 // from: http://reactjsnews.com/testing-in-react/
-require("babel-core/register")({
-});
+require("babel-core/register");
 
 var jsdom = require('node-jsdom');
 

@@ -546,7 +546,6 @@ function getCache(debugParam = false) {
      */
     const buildFlushMap_uid = (entity, flushMap, parentUid, evictMap, strong) => {
         let entityUid = String(entity[config.prop.uidName]);
-
         if (isOnCache(entity) === true) {
             // this exists and wasn't changed - this is also ok when a deeply nested entity has been changed as
             // entities are deeply frozen - so in order to edit the deeply nested entity the top one must be
