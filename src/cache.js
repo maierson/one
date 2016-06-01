@@ -554,13 +554,18 @@ function getCache(debugParam = false) {
             return;
         }
 
+        if(strong === false && getLiveItem(entity[config.prop.uidName])){
+            // is on cache regardless of whether it's strong or not
+            return;
+        }
+
         if (!flushMap.has(entityUid)) {
             ensureItem(entity, flushMap);
             // reset the parent uid to the object being iterated down
             parentUid = String(entityUid);
 
             // iterate all item's properties
-            cacheEntityRefs(entity, flushMap, parentUid, evictMap);
+            cacheEntityRefs(entity, flushMap, parentUid, evictMap, "", strong);
 
             // freeze after props as might need to modify the entity if cached uid prop exists
             if (!Object.isFrozen(entity)) {
@@ -568,7 +573,7 @@ function getCache(debugParam = false) {
             }
         }
         else {
-            cacheEntityRefs(entity, flushMap, parentUid, evictMap);
+            cacheEntityRefs(entity, flushMap, parentUid, evictMap, "", strong);
         }
 
         // done with building this entity - check its reference paths to make sure nothing is stale
@@ -883,9 +888,14 @@ function getCache(debugParam = false) {
             if (parentEntity.hasOwnProperty(prop)) {
                 refPath       = concatProp(refPath, prop);
                 let refEntity = parentEntity[prop];
+
                 if (isArray(refEntity)) {
                     cacheArrRefs(refEntity, flushMap, parentUid, evictMap, refPath, strong);
                 } else if (isObject(refEntity)) {
+                    // abort on weak puts if item exists
+                    if(strong === false && getLiveItem(refEntity[config.prop.uidName])){
+                        return;
+                    }
                     cacheObjRefs(refEntity, flushMap, parentUid, evictMap, refPath, strong);
                 }
                 Object.freeze(refEntity);
@@ -918,7 +928,7 @@ function getCache(debugParam = false) {
      * @param evictMap
      * @param refPath
      */
-    const cacheObjRefs = (refEntity, flushMap, parentUid, evictMap, refPath = "") => {
+    const cacheObjRefs = (refEntity, flushMap, parentUid, evictMap, refPath = "", strong) => {
         if (hasUid(refEntity)) {
             // if the refEntity has an uid it means that we're at the end of the refPath and must assign all ref info
             // into the entity's item
@@ -932,11 +942,11 @@ function getCache(debugParam = false) {
                 }
                 refItem[ENTITY] = refEntity;
                 parentUid       = String(refEntity[config.prop.uidName]);
-                buildFlushMap(refEntity, flushMap, parentUid, evictMap);
+                buildFlushMap(refEntity, flushMap, parentUid, evictMap, strong);
             }
         } else {
             // go deeper down the non uid rabbit hole - keep building the refPath
-            cacheEntityRefs(refEntity, flushMap, parentUid, evictMap, refPath);
+            cacheEntityRefs(refEntity, flushMap, parentUid, evictMap, refPath, strong);
         }
         Object.freeze(refEntity);
     };

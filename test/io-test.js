@@ -144,7 +144,7 @@ describe("IO", function () {
             };
             One.put(item3);
 
-            let item4 = {uid:4};
+            let item4 = {uid: 4};
             One.put(item4);
             let edit1  = One.getEdit(1);
             edit1.item = item4;
@@ -156,20 +156,19 @@ describe("IO", function () {
             expect(item2 === result2).to.be.true;
         });
 
-
         it("updates parent when inner uid ref changed " +
             "but keeps other children references unchanged in ARRAY", function () {
-            let item = {uid:"item"};
+            let item  = {uid: "item"};
             let item1 = {uid: 1};
             let item2 = {uid: 2};
             let item3 = {
-                uid  : 3,
-                item : item,
-                children: [item1,item2]
+                uid     : 3,
+                item    : item,
+                children: [item1, item2]
             };
             One.put(item3);
 
-            let item4 = {uid:4};
+            let item4 = {uid: 4};
             One.put(item4);
             let edit1  = One.getEdit(1);
             edit1.item = item4;
@@ -402,7 +401,6 @@ describe("IO", function () {
                     "three", "one"
                 ]
             };
-            // put weak = does not replace inner uid items but does replace others
             One.put(item);
 
             let result = One.get(1);
@@ -1312,6 +1310,31 @@ describe("IO", function () {
             expect(One.size()).to.equal(2);
             expect(One.length()).to.equal(3);
         });
+
+        it("doesn't replace existing entities when putting weak", function () {
+            let item1 = {uid: 1};
+            One.put(item1);
+            let item1a = {uid: 1};
+            let item2  = {uid: 2, item: item1a};
+
+            // putting weak should not replace item1 in the cache
+            One.put(item2, false);
+            let result = One.get(1);
+            expect(result === item1a).to.be.false;
+            expect(result === item1).to.be.true;
+        });
+
+        it("doesn't replace existing entities when putting weak new version inside array", function(){
+            let item1 = {uid:1};
+            let item2 = {uid:2, item: item1};
+            One.put(item2);
+            let item1a = {uid:1};
+            // put it weakly
+            One.put([item1a], false);
+            let result = One.get(1);
+            expect(result === item1).to.be.true;
+            expect(result === item1a).to.be.false;
+        })
     });
 
     describe("cycles", function () {
