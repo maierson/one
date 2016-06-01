@@ -528,9 +528,9 @@ function getCache(debugParam = false) {
             buildFlushMap_uid(entity, flushMap, parentUid, evictMap, strong);
         } else {
             if (isArray(entity)) {
-                cacheArrRefs(entity, flushMap, parentUid, evictMap, strong);
+                cacheArrRefs(entity, flushMap, parentUid, evictMap,"", strong);
             } else {
-                cacheEntityRefs(entity, flushMap, parentUid, evictMap, strong);
+                cacheEntityRefs(entity, flushMap, parentUid, evictMap,"", strong);
             }
             Object.freeze(entity);
         }
@@ -930,6 +930,11 @@ function getCache(debugParam = false) {
      */
     const cacheObjRefs = (refEntity, flushMap, parentUid, evictMap, refPath = "", strong) => {
         if (hasUid(refEntity)) {
+            // abort if weak and existing
+            if(strong === false && getLiveItem(refEntity[config.prop.uidName])){
+                return;
+            }
+
             // if the refEntity has an uid it means that we're at the end of the refPath and must assign all ref info
             // into the entity's item
             let refItem = ensureItem(refEntity, flushMap);
@@ -942,7 +947,7 @@ function getCache(debugParam = false) {
                 }
                 refItem[ENTITY] = refEntity;
                 parentUid       = String(refEntity[config.prop.uidName]);
-                buildFlushMap(refEntity, flushMap, parentUid, evictMap, strong);
+                buildFlushMap(refEntity, flushMap, parentUid, evictMap, refPath, strong);
             }
         } else {
             // go deeper down the non uid rabbit hole - keep building the refPath
@@ -967,14 +972,14 @@ function getCache(debugParam = false) {
      * @param evictMap
      * @param refPath
      */
-    const cacheArrRefs = (entity, flushMap, parentUid, evictMap, refPath = "") => {
+    const cacheArrRefs = (entity, flushMap, parentUid, evictMap, refPath = "", strong) => {
         let path;
         entity.forEach((item, index) => {
             path = refPath + "." + index;
             if (isArray(item)) {
-                cacheArrRefs(item, flushMap, parentUid, evictMap, path);
+                cacheArrRefs(item, flushMap, parentUid, evictMap, path, strong);
             } else if (isObject(item)) {
-                cacheObjRefs(item, flushMap, parentUid, evictMap, path);
+                cacheObjRefs(item, flushMap, parentUid, evictMap, path, strong);
             }
         });
         Object.freeze(entity);
