@@ -1,5 +1,6 @@
+![One logo](https://lh3.googleusercontent.com/5CBS5xCZm0BQQ9GaE8SfDnomFNWkr5jU-ZPRi_Cdptj7__GSyRPCeQbQA1OBxt0OZ3LNs-a_eGiyBSCtOM4=s100 "One logo")  
 
-![One logo](https://lh3.googleusercontent.com/Z3z4wjPFZqKiCXipp8V109qYHtsHNC1SzPRElCtnUgzeJ6c-tSf9-nYnrDfs322AlcXdK8XQTyNTRVhFyQ=s100 "One logo")  #One
+# **ONE** #
 
 ```One``` is a browser side application cache. It guarantees entity uniqueness across the entire cache.
 
