@@ -7,3 +7,4 @@ npm-debug.log
 .npmignore
 webpack.tt.config.js
 webpack.st.config.js
+wallaby.js

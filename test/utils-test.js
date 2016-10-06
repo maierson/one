@@ -9,7 +9,7 @@ import {
     print,
     contains
 } from './test_helper';
-import createCache from '../src/cache';
+import {getCache} from '../src/cache';
 import * as config from '../src/utils/config';
 import deepFreeze from '../src/utils/deepFreeze'
 import {deepClone, isArray, hasUid} from '../src/utils/clone';
@@ -22,7 +22,7 @@ describe("Utils", function () {
     let One;
 
     beforeEach(function () {
-        One = createCache(true);
+        One = getCache(true);
         // reset config before each call
         One.config({
             uidName         : "uid",

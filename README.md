@@ -1,4 +1,5 @@
-# One
+
+![One logo](https://lh3.googleusercontent.com/Z3z4wjPFZqKiCXipp8V109qYHtsHNC1SzPRElCtnUgzeJ6c-tSf9-nYnrDfs322AlcXdK8XQTyNTRVhFyQ=s100 "One logo")  #One
 
 ```One``` is a browser side application cache. It guarantees entity uniqueness across the entire cache.
 
@@ -14,12 +15,54 @@ npm install one --save
 ```
 
 ```js
-import * as cache from 'one';
-let One = cache.createCache();
+import * as One from 'one';
+
+// get a hold of an instance
+let one = One.getCache();
 
 // or with debugging options
-let One = cache.createCache(true);
+let one = One.getCache(true);
+
+// you can then use the instance
+one.put(item);
+
+// One.getCache() is a singleton so you can also do this
+One.getCache().put(item);
 ```
+
+Or simply put ```one.min.js``` on your page to access the ```One``` global variable from anywhere. In this case the instance is created for you and you can access it directly (no need to call ```getCache()```).
+
+
+```
+#!javascript
+
+One.put(item)
+```
+
+####A word about javascript versions compatibility
+ES6 introduced Maps which are supposed to be up to 3 times more efficient than using Object for storing and retrieving keyed items. 
+```One``` uses Maps by default. However for older browsers that do not support the standard you will need to compile the library with the babel-polyfill. The caveat is that it bumps up the size of the minified lib from ~16kb go ~100kb. 
+
+To compile with polyfill:
+
+1. Uncomment this line in index.js
+```
+#!javascript
+
+//import 'babel-polyfill';
+```
+
+2. Run this line in terminal from the One folder:
+
+```
+#!javascript
+
+npm run prepub
+```
+
+That's it. The compiled versions are added to the dist folder.
+
+
 
 ###Api
 There are three significant operation types to be aware of:
@@ -121,5 +164,3 @@ It might happen later if there's a need.
   * [Evict](https://maierson.gitbooks.io/one/content/evict.html)
 * [Time travel](https://maierson.gitbooks.io/one/content/time_travel.html)
 * [Release Notes](https://maierson.gitbooks.io/one/content/release_notes.html)
-
-    

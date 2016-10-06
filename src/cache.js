@@ -34,28 +34,11 @@ import {ENTITY, REF_FROM, REF_TO, UPDATED_KEY} from './utils/constants';
 // version of an entity isDirty() and update itself accordingly as needed (React's shouldComponentUpdate() works in
 // this fashion).
 
-// PERFORMANCE CONSIDERATIONS:
-// There are 3 possible bottlenecks depending on the update strategy used (read optimized or write optimized).
-
-// 1. PUT the entity first. This cost is incurred regardless of read or write optimization. In order to keep a
-// map of all uid entities on the cache each entity added to the cache must be scanned for contained uid references.
-// This is potentially expensive particularly when there is need for a fast UI update immediately after a cache write.
-// OPTIMIZATION: use a 2 tiered write operation, queue - adds all entities from a list to a temporary map without
-// a deep scanning of each entity. This permits a fast update of the UI but requires a subsequent manual commit()
-// call in order to perform the deep put scan after the UI updates have been processed. You should manage the commit
-// operations to execute at a time when you know there is no UI processing visible to the user such as to keep a smooth
-// flow appearance.
-
-// 2. WRITE OPTIMIZATION. Every time that a uid entity is updated all of its references must be updated. In order to
-// optimize the write operation the methodology would be to only optimize the direct map reference at the uid key of
-// the entity - single operation O(1). However each read would then have to scan each entity for its updated reference
-// and replace it into the entity at the correct location. Fast writes, slow reads O(n). Since there are a lot more
-// reads than writes in any application this is not the way it's implemented.
-
-// 3. READ OPTIMIZATION. Have each entity updated on write and ready on every read. Still O(n) but each entity is
+// READ OPTIMIZATION. Each entity is updated on write and ready on every read. Still O(n) but each entity is
 // retrieved by key from its location on the map and with proper pagination this if very manageable. However this
 // requires that all referencing parents are updated on write for each entity write. This is potentially slow but by
-// updating a single entity at a time the cost is much lower than Write optimization. This is how One works.
+// updating a single entity at a time the cost is much lower than Write optimization.
+
 // Further OPTIMIZATION - when putting a list DO NOT update uid entities already existing in the cache. Instead replace
 // the entity in the list with the existing cache entity thus avoiding a potentially expensive update pointers
 // operation for the existing entity. The caveat is that each entity that is changed and updated must be done so one at
@@ -72,21 +55,27 @@ import {ENTITY, REF_FROM, REF_TO, UPDATED_KEY} from './utils/constants';
 // "main" thread always present. It references all the nodes in the main stack. All other threads are user created and
 // removed. You may have an unlimited number of threads although it is good practice to keep the number low.
 
+let instances = {};
+
 /**
  *
  * @param {boolean} debug set to true in order to return an object that contains debugging methods (count etc)
  * @param {string} libName optional library name
  * @returns {*}
  */
-export default function createCache(debug = true, libName = "One") {
-    if (window) {
-        if (window[libName] === undefined) {
-            window[libName] = getCache(debug);
-        }
-        return window[libName];
+export function getCache(debug = true, instanceName = "One") {
+    if(!instanceName){
+        instanceName = "one";
     }
-    /* istanbul ignore next */
-    return getCache(debug);
+    if(!instances[instanceName]){
+        instances[instanceName] = createCache(debug);
+    }
+    if(window){
+        if(window[instanceName] === undefined){
+            window[instanceName] = instances[instanceName];
+        }
+    }
+    return instances[instanceName];
 }
 
 /**
@@ -97,8 +86,7 @@ export default function createCache(debug = true, libName = "One") {
  *     getHistoryState: getHistoryState, isDirty: isDirty, uuid: createUUid, contains: contains, config: setConfig,
  *     subscribe: subscribe}}
  */
-function getCache(debugParam = false) {
-    "use strict";
+function createCache(debugParam = false) {
 
     /**
      * Contains all the information required to sequentially keep track of cache nodes.
@@ -386,6 +374,7 @@ function getCache(debugParam = false) {
      */
     const evict = obj => {
         let uidArray = buildEvictUidArray(obj);
+
         if (uidArray.length == 0) {
             return false;
         }
@@ -409,14 +398,18 @@ function getCache(debugParam = false) {
         let flushMap = new Map();
         let evictMap = new Map();
 
+        let parentsChanged = [];
+
         uidArray.forEach(uid => {
             // remove REF_FROM in item references metadata
             clearTargetRefFroms(uid, flushMap, evictMap);
             // value doesn't matter here - will be evicted
             evictMap.set(uid, null);
             // remove REF_TO in parent metadata
-            clearParentRefTos(uid, flushMap);
+            clearParentRefTos(uid, flushMap, uidArray, parentsChanged);
         });
+
+        putParentsChanged(parentsChanged, flushMap);
 
         // updates
         flushMap.forEach((item, key) => {
@@ -428,9 +421,19 @@ function getCache(debugParam = false) {
             tempState.delete(key);
         });
 
+
+
         flush(tempState);
         notify();
+
         return true;
+    };
+
+    const putParentsChanged = (parentsChanged, flushMap) => {
+        if(parentsChanged && parentsChanged.length > 0 && size() > 0){
+            buildFlushMap(parentsChanged, flushMap, null, null, false);
+            updatePointers(flushMap);
+        }
     };
 
     /**
@@ -613,7 +616,7 @@ function getCache(debugParam = false) {
      * @param entityUid
      * @param flushMap
      */
-    const clearParentRefTos = (entityUid, flushMap) => {
+    const clearParentRefTos = (entityUid, flushMap, uidArray, parentsChanged) => {
         let item = getItemFlushOrAlive(entityUid, flushMap);
 
         if (item) {
@@ -625,6 +628,9 @@ function getCache(debugParam = false) {
                         let success = clearRefTo(parentItem, entityUid);
                         if (success === true) {
                             flushMap.set(parentUid, parentItem);
+                            if(uidArray.indexOf(parentUid) < 0){
+                                parentsChanged.push(parentItem);
+                            }
                         }
                     }
                 }

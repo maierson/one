@@ -1,9 +1,9 @@
 var path    = require('path');
 var webpack = require('webpack');
-var merge   = require('webpack-merge');
+//var merge   = require('webpack-merge');
 
-var TARGET            = process.env.npm_lifecycle_event;
-process.env.BABEL_ENV = TARGET;
+//var TARGET            = process.env.npm_lifecycle_event;
+//process.env.BABEL_ENV = TARGET;
 
 const ROOT_PATH  = path.resolve(__dirname);
 const DIST_PATH = path.resolve(ROOT_PATH, "dist");
@@ -20,13 +20,13 @@ module.exports = {
     },
     resolve: {
         root      : path.resolve(APP_PATH),
-        extensions: ['', '.js', '.jsx']
+        extensions: ['', '.js']
     },
     module : {
         loaders: [
             {
-                test   : /\.jsx?$/,
-                loaders: ['babel'],
+                test   : /\.js?$/,
+                loaders: ['babel-loader'],
                 include: APP_PATH,
                 exclude: /node_modules/
             }

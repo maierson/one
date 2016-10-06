@@ -1,9 +1,10 @@
-import createCache from './cache';
+//import 'babel-polyfill';
+import {getCache} from './cache';
 
 (function () {
-    createCache();
+    getCache();
 })();
 
 export {
-    createCache
+    getCache
 }
