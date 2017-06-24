@@ -6,6 +6,8 @@
 
 [![Npm Status](https://badge.fury.io/js/one.svg)](https://npmjs.com/package/one-typescript) [![Build Status](https://travis-ci.org/maierson/one.svg)](https://travis-ci.org/maierson/one) [![Coverage Status](https://coveralls.io/repos/github/maierson/one/badge.svg?branch=master)](https://coveralls.io/github/maierson/one?branch=master)
 
+Small ~5kb gzipped.
+
 Each entity tracked for uniqueness must have a unique id. There is precisely ONE distinct entity in the cache
 for each unique id. Entities that do not have a unique id are still cached but not tracked for uniqueness.
 
@@ -24,23 +26,23 @@ for each unique id. Entities that do not have a unique id are still cached but n
 3. Remove the need for ```babel-polyfill```
 4. __Breaking api changes:__ Simplified minimal api. You really only need the commands in the table below. There are a couple of other options mostly for debugging (see the Api section for the development api list).
 
-| Command      | Action                                                                                                                                                                                                                                                                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| __getCache__ | Create or access a specific version of the cache. There can be multiple concurrent versions of the cache in case distinct versions of the same entity are needed (for example if display and edit data need to be different until a user commits changes). ```One.getCache('edit')   ``` would create a cache dedicated to edit operations. |
-| __put__      | Add an entity to the cache and make it immutable.                                                                                                                                                                                                                                                                                           |
-| __get__      | Retrieve an entity from the cache. This is a fast hash map locator.                                                                                                                                                                                                                                                                         |
-| __getEdit__  | Get a shallow editable version of the entity from the cache. Inner nested entities are still immutable. This is in order to make efficient use of trie structures.                                                                                                                                                                          |
-| __evict__    | Remove an entity from the cache. Evicts it from all parents as well.                                                                                                                                                                                                                                                                        |
+| Command      | Action |
+| ------------ | -----------------------|
+| __getCache__ | Create or access a specific version of the cache. There can be multiple concurrent versions of the cache in case distinct versions of the same entity are needed (for example if display and edit data need to be different until a user commits changes). `One.getCache('edit')` would create a cache dedicated to edit operations. You don't need this if you only use the default version of the cache `One.put(item)` |
+| __put__      | Add an entity to the cache and make it immutable.|
+| __get__      | Retrieve an entity from the cache. This is a fast hash map locator. |
+| __getEdit__  | Get a shallow editable version of the entity from the cache. Inner nested entities are still immutable. This is in order to make efficient use of trie structures. |
+| __evict__    | Remove an entity from the cache. Evicts it from all parents as well.|
 
 
 ### __Api__
 In addition to the 5 production api commands there are 4 options intended for development:
 
-| Command    | Action                                                                                                                                         |
-| ---------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| __reset__  | Resets the cache to empty. Useful for testing.                                                                                                 |
-| __length__ | Number of nodes in the current cache. Each node contains one atomic change to the cache so moving between nodes gives you time  travelling.    |
-| __size__   | Number of entities cached on the current node (the size of the node).                                                                          |
+| Command    | Action   |
+| ---------- | :--------------------- |
+| __reset__  | Resets the cache to empty. Useful for testing.|
+| __length__ | Number of nodes in the current cache. Each node contains one atomic change to the cache so moving between nodes gives you time  travelling.|
+| __size__   | Number of entities cached on the current node (the size of the |
 | __print__  | Provides a printable representation of the entire cache that can be passed on to a logger. Slow. For debugging only. Do not use in production. |
 
 

@@ -8,11 +8,11 @@ const toString: any = Object.prototype.toString
 var _hasOwnProperty = Object.prototype.hasOwnProperty
 
 export function isNumber(value) {
-  return typeof value === 'number' || toString(value) === "[object Number]"
+  return typeof value === 'number' || toString(value) === '[object Number]'
 }
 
 export function isString(obj) {
-  return typeof obj === 'string' || toString(obj) === "[object String]"
+  return typeof obj === 'string' || toString(obj) === '[object String]'
 }
 
 /**
@@ -38,7 +38,6 @@ export function isFunction(item) {
  * checks if argument is an array
  */
 export function isArray(value) {
-
   if (!value || value === null) {
     return false
   }
@@ -107,7 +106,7 @@ export function hasUid(obj) {
   if (!isObject(obj)) {
     return false
   }
-  if (typeof obj[config.uidName] === "undefined") {
+  if (typeof obj[config.uidName] === 'undefined') {
     return false
   }
   let uid = obj[config.uidName]
@@ -201,21 +200,19 @@ export function deepClone(obj, uidReference?, freeze = true) {
             }
           } else {
             // do nothing here - keep the uid reference - not editable
-            //result[propName] = deepClone(value)
+            // result[propName] = deepClone(value)
           }
         } else {
           result[propName] = deepClone(value, uidReference, freeze)
         }
-      }
-      else if (isFunction(value)) {
+      } else if (isFunction(value)) {
         // object is already constructed - no need to clone the constructor
         // also cloning fails with 'unexpected token this' error for objects
         // constructed from classes inheriting from other classes
         if (propName !== 'constructor') {
           result[propName] = value.clone(result)
         }
-      }
-      else {
+      } else {
         // primitives
         result[propName] = value
       }
@@ -255,6 +252,6 @@ export const cacheSize = (instance: ICacheInstance): number => {
   return cacheNode ? cacheNode.items.size() : 0
 }
 
-export const cacheLength = (instance: ICacheInstance): number => {
-  return instance.thread.nodes.length
-}
+export const cacheLength = (instance: ICacheInstance): number => (
+  instance.thread.nodes.length
+)

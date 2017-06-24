@@ -1,4 +1,3 @@
-
 /**
  * Hash map of a collection of paths.
  *
@@ -11,7 +10,7 @@ export default class CacheMap<T> {
   length = 0
 
   set(key: string | number, value: T): boolean {
-    if (typeof this.paths[key] === "undefined") {
+    if (typeof this.paths[key] === 'undefined') {
       this.length++
       this.paths[key] = value
       return true
@@ -20,9 +19,7 @@ export default class CacheMap<T> {
     return false
   }
 
-  get = (key): T => {
-    return this.paths[key]
-  }
+  get = (key): T => this.paths[key]
 
   delete = (key): boolean => {
     if (typeof this.paths[key] !== 'undefined' && this.length > 0) {
@@ -45,7 +42,7 @@ export default class CacheMap<T> {
 
   clone = (): CacheMap<T> => {
     let clone: CacheMap<T> = new CacheMap<T>()
-    clone.paths = { ...this.paths, }
+    clone.paths = { ...this.paths }
     clone.length = this.length
     return clone
   }
