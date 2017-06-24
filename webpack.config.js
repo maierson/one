@@ -1,35 +1,31 @@
-var path    = require('path');
-var webpack = require('webpack');
-//var merge   = require('webpack-merge');
+var path = require('path')
 
-//var TARGET            = process.env.npm_lifecycle_event;
-//process.env.BABEL_ENV = TARGET;
-
-const ROOT_PATH  = path.resolve(__dirname);
-const DIST_PATH = path.resolve(ROOT_PATH, "dist");
-const APP_PATH   = path.resolve(ROOT_PATH, "src");
-const MAIN_PATH  = path.resolve(ROOT_PATH, "src/index.js");
+const ROOT_PATH = path.resolve(__dirname)
+const DIST_PATH = path.resolve(ROOT_PATH, 'dist')
+const APP_PATH = path.resolve(ROOT_PATH, 'src')
+const MAIN_PATH = path.resolve(ROOT_PATH, 'src/index.ts')
 
 module.exports = {
-    context: APP_PATH,
-    entry  : MAIN_PATH,
-    output : {
-        path    : DIST_PATH,
-        filename: "one.js",
-        include : APP_PATH
-    },
-    resolve: {
-        root      : path.resolve(APP_PATH),
-        extensions: ['', '.js']
-    },
-    module : {
-        loaders: [
-            {
-                test   : /\.js?$/,
-                loaders: ['babel-loader'],
-                include: APP_PATH,
-                exclude: /node_modules/
-            }
-        ]
-    }
-};
+  devtool: 'inline-source-map',
+  context: APP_PATH,
+  entry: MAIN_PATH,
+  output: {
+    path: DIST_PATH,
+    filename: 'one.js',
+    include: APP_PATH,
+  },
+  resolve: {
+    root: path.resolve(APP_PATH),
+    extensions: ['', '.ts', '.js'],
+  },
+  module: {
+    loaders: [
+      {
+        test: /\.ts?$/,
+        loaders: ['babel-loader', 'ts-loader'],
+        include: APP_PATH,
+        exclude: /node_modules/,
+      },
+    ],
+  },
+}

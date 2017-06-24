@@ -1,0 +1,31 @@
+{
+  "version": "0.0.6",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "./",
+    "outDir": "./lib",
+    "sourceMap": false,
+    "inlineSourceMap": false,
+    "module": "commonjs",
+    "declaration": true,
+    "moduleResolution": "node",
+    "target": "es5",
+    "noImplicitAny": false,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  },
+  "exclude": [
+    "node_modules",
+    "test"
+  ],
+  "include": [
+    "src/**/*"
+  ],
+  "files": [
+    "./src/index.ts"
+  ],
+  "buildOnSave": true,
+  "compileOnSave": false
+}

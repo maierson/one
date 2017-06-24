@@ -1,0 +1,97 @@
+{
+  "extends": [
+    "standard",
+    "plugin:jest/recommended"
+  ],
+  "env": {
+    "jest": true,
+    "jest/globals": true,
+    "es6": true
+  },
+  "parser": "typescript-eslint-parser",
+  "parserOptions": {
+    "ecmaVersion": 8,
+    "sourceType": "module"
+  },
+  "plugins": [
+    "jest"
+  ],
+  "rules": {
+    "arrow-body-style": [
+      "error",
+      "as-needed"
+    ],
+    "comma-dangle": [
+      2,
+      "always-multiline"
+    ],
+    "import/no-extraneous-dependencies": [
+      "off"
+    ],
+    "import/extensions": [
+      "off"
+    ],
+    "import/no-unresolved": [
+      "off"
+    ],
+    "import/first": [
+      "off"
+    ],
+    "jest/valid-expect": 1,
+    "quotes": [
+      2,
+      "single"
+    ],
+    "semi": 1,
+    "space-infix-ops": 0,
+    "no-bitwise": [
+      "error",
+      {
+        "allow": [
+          "~",
+          "|",
+          "&",
+          ">>"
+        ]
+      }
+    ],
+    "no-console": [
+      2,
+      {
+        "allow": [
+          "error"
+        ]
+      }
+    ],
+    "no-param-reassign": 2,
+    "no-undef": 2,
+    "no-use-before-define": [
+      2,
+      {
+        "functions": false
+      }
+    ],
+    "no-shadow": 1,
+    "no-unused-expressions": [
+      1,
+      {
+        "allowShortCircuit": false,
+        "allowTernary": false
+      }
+    ],
+    "no-unused-vars": 1,
+    "operator-linebreak": [
+      2,
+      "before"
+    ],
+    "indent": 0,
+    "space-before-function-paren": "off"
+  },
+  "globals": {
+    "it": true,
+    "describe": true,
+    "beforeEach": true,
+    "afterEach": true,
+    "expect": true
+  }
+}

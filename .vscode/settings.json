@@ -1,0 +1,60 @@
+// Place your settings in this file to overwrite default and user settings.
+// Place your settings in this file to overwrite default and user settings.
+{
+  "editor.fontSize": 16,
+  "editor.fontFamily": "'Fira Code',Menlo, Monaco, 'Courier New', monospace",
+  "editor.lineHeight": 28,
+  "editor.fontWeight": "100",
+  "editor.detectIndentation": false,
+  "javascript.validate.enable": false,
+  "editor.scrollBeyondLastLine": false,
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 180,
+  "editor.formatOnSave": true,
+  "editor.renderIndentGuides": true,
+  "editor.renderWhitespace": "none",
+  "editor.renderLineHighlight": "all",
+  "explorer.openEditors.visible": 0,
+  "editor.minimap.enabled": false,
+  "editor.minimap.renderCharacters": true,
+  "editor.fontLigatures": true,
+  "editor.snippetSuggestions": "top",
+  // "editor.rulers": [
+  //     120
+  // ],
+  "editor.tabSize": 2,
+  "window.restoreFullscreen": true,
+  "editor.formatOnType": true,
+  "files.associations": {
+    ".js": "flow",
+    ".jsx": "javascriptreact"
+  },
+  "typescript.referencesCodeLens.enabled": false,
+  "files.exclude": {
+    ".vscode/": true,
+    "gwt-unitCache/": true,
+    ".settings/": true,
+    ".classpath": true,
+    ".project": true,
+    "favicon.ico": true
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "wallaby.colors": {
+    "covered": "#043",
+    "errorPath": "#f63",
+    "errorSource": "#d00",
+    "notCovered": "#787878",
+    //"errorPath": "#aa5555",
+    //"notCovered": "#e5e5e5",
+    //"partiallyCovered": "#ffff00"
+  },
+  "wallaby.defaults.test.load": false,
+  "workbench.colorCustomizations": {
+    "editorIndentGuide.background": "#272727"
+  }
+}
